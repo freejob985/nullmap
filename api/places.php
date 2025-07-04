@@ -36,14 +36,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 exit;
             }
 
-            $stmt = $db->prepare('
+            $place = $db->fetchOne('
                 SELECT p.*, c.name as country_name 
                 FROM places p
                 JOIN countries c ON p.country_id = c.id
                 WHERE p.id = ?
-            ');
-            $stmt->execute([$id]);
-            $place = $stmt->fetch();
+            ', [$id]);
 
             if (!$place) {
                 http_response_code(404);
@@ -56,13 +54,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Get all places with country names
-        $stmt = $db->query('
+        $places = $db->fetchAll('
             SELECT p.*, c.name as country_name 
             FROM places p
             JOIN countries c ON p.country_id = c.id
             ORDER BY p.id DESC
         ');
-        $places = $stmt->fetchAll();
         echo json_encode(['data' => $places]);
         break;
 
@@ -89,22 +86,19 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Verify country exists
-        $stmt = $db->prepare('SELECT id FROM countries WHERE id = ?');
-        $stmt->execute([$data['country_id']]);
-        if (!$stmt->fetch()) {
+        $country = $db->fetchOne('SELECT id FROM countries WHERE id = ?', [$data['country_id']]);
+        if (!$country) {
             http_response_code(422);
             echo json_encode(['error' => 'Invalid country ID']);
             exit;
         }
 
         // Insert place
-        $stmt = $db->prepare('
-            INSERT INTO places (name, total, type, country_id, city, latitude, longitude)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ');
-
         try {
-            $stmt->execute([
+            $lastId = $db->insert('
+                INSERT INTO places (name, total, type, country_id, city, latitude, longitude)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ', [
                 $data['name'],
                 $data['total'],
                 $data['type'],
@@ -115,14 +109,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
             ]);
 
             // Get country name for response
-            $stmt = $db->prepare('SELECT name FROM countries WHERE id = ?');
-            $stmt->execute([$data['country_id']]);
-            $country = $stmt->fetch();
+            $country = $db->fetchOne('SELECT name FROM countries WHERE id = ?', [$data['country_id']]);
 
             echo json_encode([
                 'message' => 'Place created successfully',
                 'data' => [
-                    'id' => $db->lastInsertId(),
+                    'id' => $lastId,
                     'name' => $data['name'],
                     'total' => $data['total'],
                     'type' => $data['type'],
@@ -179,23 +171,20 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Verify country exists
-        $stmt = $db->prepare('SELECT id FROM countries WHERE id = ?');
-        $stmt->execute([$data['country_id']]);
-        if (!$stmt->fetch()) {
+        $country = $db->fetchOne('SELECT id FROM countries WHERE id = ?', [$data['country_id']]);
+        if (!$country) {
             http_response_code(422);
             echo json_encode(['error' => 'Invalid country ID']);
             exit;
         }
 
         // Update place
-        $stmt = $db->prepare('
-            UPDATE places
-            SET name = ?, total = ?, type = ?, country_id = ?, city = ?, latitude = ?, longitude = ?
-            WHERE id = ?
-        ');
-
         try {
-            $stmt->execute([
+            $rowCount = $db->execute('
+                UPDATE places
+                SET name = ?, total = ?, type = ?, country_id = ?, city = ?, latitude = ?, longitude = ?
+                WHERE id = ?
+            ', [
                 $data['name'],
                 $data['total'],
                 $data['type'],
@@ -206,16 +195,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 $id
             ]);
 
-            if ($stmt->rowCount() === 0) {
+            if ($rowCount === 0) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Place not found']);
                 exit;
             }
 
             // Get country name for response
-            $stmt = $db->prepare('SELECT name FROM countries WHERE id = ?');
-            $stmt->execute([$data['country_id']]);
-            $country = $stmt->fetch();
+            $country = $db->fetchOne('SELECT name FROM countries WHERE id = ?', [$data['country_id']]);
 
             echo json_encode([
                 'message' => 'Place updated successfully',
@@ -256,12 +243,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Delete place
-        $stmt = $db->prepare('DELETE FROM places WHERE id = ?');
-
         try {
-            $stmt->execute([$id]);
+            $rowCount = $db->execute('DELETE FROM places WHERE id = ?', [$id]);
 
-            if ($stmt->rowCount() === 0) {
+            if ($rowCount === 0) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Place not found']);
                 exit;
@@ -278,4 +263,4 @@ switch ($_SERVER['REQUEST_METHOD']) {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
         break;
-} 
+}
