@@ -13,24 +13,40 @@ if ($auth->isLoggedIn()) {
 }
 
 $errors = [];
+$email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get and sanitize input
     $data = $validation->sanitize($_POST);
+    $email = $data['email'] ?? '';
     
+    // Validation rules
     $rules = [
         'email' => ['required', 'email'],
-        'password' => ['required']
+        'password' => ['required', 'min:6']
     ];
 
+    // Validate input
     if ($validation->validate($data, $rules)) {
+        // Attempt login
+     //   echo "<pre>Debug at line " . __LINE__ . " (one-622): \n";
+        echo $auth->login($data['email'], $data['password']);
+        print_r($data);
+        die();
+
         if ($auth->login($data['email'], $data['password'])) {
+            // Successful login
             header('Location: index.php');
             exit;
         } else {
-            $errors['login'] = 'Invalid email or password.';
+            // Failed login
+            $errors['login'] = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+            error_log("Login failed for email: " . $data['email']);
         }
     } else {
+        // Validation errors
         $errors = $validation->getErrors();
+        error_log("Validation errors: " . json_encode($errors));
     }
 }
 ?>
@@ -60,9 +76,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="card-body p-5">
                         <h1 class="text-center mb-4">تسجيل الدخول</h1>
                         
-                        <?php if (isset($errors['login'])): ?>
+                        <?php if (!empty($errors)): ?>
                             <div class="alert alert-danger" role="alert">
-                                <?php echo $errors['login']; ?>
+                                <?php 
+                                if (isset($errors['login'])) {
+                                    echo $errors['login'];
+                                } else {
+                                    echo 'يرجى تصحيح الأخطاء التالية:';
+                                    echo '<ul class="mb-0 mt-2">';
+                                    foreach ($errors as $field => $fieldErrors) {
+                                        foreach ($fieldErrors as $error) {
+                                            echo '<li>' . $error . '</li>';
+                                        }
+                                    }
+                                    echo '</ul>';
+                                }
+                                ?>
                             </div>
                         <?php endif; ?>
 
@@ -73,8 +102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <span class="input-group-text">
                                         <i class="mdi mdi-email"></i>
                                     </span>
-                                    <input type="email" class="form-control <?php echo isset($errors['email']) ? 'is-invalid' : ''; ?>"
-                                           id="email" name="email" value="<?php echo $_POST['email'] ?? ''; ?>" required>
+                                    <input type="email" 
+                                           class="form-control <?php echo isset($errors['email']) ? 'is-invalid' : ''; ?>"
+                                           id="email" 
+                                           name="email" 
+                                           value="<?php echo htmlspecialchars($email); ?>"
+                                           required
+                                           autocomplete="email">
                                     <?php if (isset($errors['email'])): ?>
                                         <div class="invalid-feedback">
                                             <?php echo $errors['email'][0]; ?>
@@ -89,8 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <span class="input-group-text">
                                         <i class="mdi mdi-lock"></i>
                                     </span>
-                                    <input type="password" class="form-control <?php echo isset($errors['password']) ? 'is-invalid' : ''; ?>"
-                                           id="password" name="password" required>
+                                    <input type="password" 
+                                           class="form-control <?php echo isset($errors['password']) ? 'is-invalid' : ''; ?>"
+                                           id="password" 
+                                           name="password" 
+                                           required
+                                           autocomplete="current-password">
                                     <?php if (isset($errors['password'])): ?>
                                         <div class="invalid-feedback">
                                             <?php echo $errors['password'][0]; ?>

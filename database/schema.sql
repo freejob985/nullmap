@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -51,5 +51,5 @@ ALTER TABLE users ADD INDEX idx_email (email);
 ALTER TABLE users ADD INDEX idx_role (role);
 
 -- Add sample admin user (password: admin123)
-INSERT INTO users (name, email, password_hash, role) VALUES 
+INSERT INTO users (name, email, password, role) VALUES 
 ('Admin', 'admin@nullmap.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'); 

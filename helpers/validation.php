@@ -7,6 +7,23 @@ class Validation {
     private static $instance = null;
     private $errors = [];
 
+    private $messages = [
+        'required' => 'حقل :field مطلوب',
+        'email' => 'يجب أن يكون :field بريداً إلكترونياً صحيحاً',
+        'min' => 'يجب أن يكون :field على الأقل :param حروف',
+        'max' => 'يجب أن لا يتجاوز :field :param حروف',
+        'numeric' => 'يجب أن يكون :field رقماً',
+        'in' => 'قيمة :field غير صالحة'
+    ];
+
+    private $fields = [
+        'email' => 'البريد الإلكتروني',
+        'password' => 'كلمة المرور',
+        'name' => 'الاسم',
+        'role' => 'الدور',
+        'is_active' => 'حالة الحساب'
+    ];
+
     private function __construct() {}
 
     public static function getInstance() {
@@ -20,110 +37,88 @@ class Validation {
         $this->errors = [];
         
         foreach ($rules as $field => $fieldRules) {
-            if (!isset($data[$field]) && !in_array('optional', $fieldRules)) {
-                $this->errors[$field][] = "The {$field} field is required.";
-                continue;
-            }
-
-            if (isset($data[$field])) {
-                $value = $data[$field];
+            foreach ($fieldRules as $rule) {
+                if (is_string($rule)) {
+                    $ruleName = $rule;
+                    $param = null;
+                } else {
+                    list($ruleName, $param) = explode(':', $rule);
+                }
                 
-                foreach ($fieldRules as $rule) {
-                    if (is_string($rule)) {
-                        $this->applyRule($field, $value, $rule);
-                    } elseif (is_array($rule)) {
-                        $this->applyRuleWithParams($field, $value, $rule);
-                    }
+                $value = $data[$field] ?? null;
+                $fieldName = $this->fields[$field] ?? $field;
+                
+                switch ($ruleName) {
+                    case 'required':
+                        if (empty($value)) {
+                            $this->addError($field, str_replace(':field', $fieldName, $this->messages['required']));
+                        }
+                        break;
+                        
+                    case 'email':
+                        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                            $this->addError($field, str_replace(':field', $fieldName, $this->messages['email']));
+                        }
+                        break;
+                        
+                    case 'min':
+                        if (!empty($value) && strlen($value) < $param) {
+                            $message = str_replace([':field', ':param'], [$fieldName, $param], $this->messages['min']);
+                            $this->addError($field, $message);
+                        }
+                        break;
+                        
+                    case 'max':
+                        if (!empty($value) && strlen($value) > $param) {
+                            $message = str_replace([':field', ':param'], [$fieldName, $param], $this->messages['max']);
+                            $this->addError($field, $message);
+                        }
+                        break;
+                        
+                    case 'numeric':
+                        if (!empty($value) && !is_numeric($value)) {
+                            $this->addError($field, str_replace(':field', $fieldName, $this->messages['numeric']));
+                        }
+                        break;
+                        
+                    case 'in':
+                        $allowedValues = explode(',', $param);
+                        if (!empty($value) && !in_array($value, $allowedValues)) {
+                            $this->addError($field, str_replace(':field', $fieldName, $this->messages['in']));
+                        }
+                        break;
                 }
             }
         }
-
+        
         return empty($this->errors);
     }
 
-    private function applyRule($field, $value, $rule) {
-        switch ($rule) {
-            case 'required':
-                if (empty($value)) {
-                    $this->errors[$field][] = "The {$field} field is required.";
-                }
-                break;
-
-            case 'email':
-                if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                    $this->errors[$field][] = "The {$field} must be a valid email address.";
-                }
-                break;
-
-            case 'numeric':
-                if (!is_numeric($value)) {
-                    $this->errors[$field][] = "The {$field} must be a number.";
-                }
-                break;
-
-            case 'latitude':
-                if (!is_numeric($value) || $value < -90 || $value > 90) {
-                    $this->errors[$field][] = "The {$field} must be a valid latitude (-90 to 90).";
-                }
-                break;
-
-            case 'longitude':
-                if (!is_numeric($value) || $value < -180 || $value > 180) {
-                    $this->errors[$field][] = "The {$field} must be a valid longitude (-180 to 180).";
-                }
-                break;
+    public function sanitize($data) {
+        $sanitized = [];
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $sanitized[$key] = strip_tags(trim($value));
+            } else {
+                $sanitized[$key] = $value;
+            }
         }
+        return $sanitized;
     }
 
-    private function applyRuleWithParams($field, $value, $rule) {
-        $ruleName = $rule[0];
-        $params = array_slice($rule, 1);
-
-        switch ($ruleName) {
-            case 'min':
-                if (strlen($value) < $params[0]) {
-                    $this->errors[$field][] = "The {$field} must be at least {$params[0]} characters.";
-                }
-                break;
-
-            case 'max':
-                if (strlen($value) > $params[0]) {
-                    $this->errors[$field][] = "The {$field} must not exceed {$params[0]} characters.";
-                }
-                break;
-
-            case 'enum':
-                if (!in_array($value, $params)) {
-                    $validValues = implode(', ', $params);
-                    $this->errors[$field][] = "The {$field} must be one of: {$validValues}.";
-                }
-                break;
+    public function addError($field, $message) {
+        if (!isset($this->errors[$field])) {
+            $this->errors[$field] = [];
         }
+        $this->errors[$field][] = $message;
     }
 
     public function getErrors() {
         return $this->errors;
     }
 
-    public function sanitize($data) {
-        $sanitized = [];
-        
-        foreach ($data as $key => $value) {
-            if (is_string($value)) {
-                // Remove HTML and PHP tags
-                $value = strip_tags($value);
-                // Convert special characters to HTML entities
-                $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-                // Trim whitespace
-                $value = trim($value);
-            } elseif (is_array($value)) {
-                $value = $this->sanitize($value);
-            }
-            
-            $sanitized[$key] = $value;
-        }
-        
-        return $sanitized;
+    public function hasErrors() {
+        return !empty($this->errors);
     }
 
     public static function getRules() {

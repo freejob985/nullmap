@@ -23,23 +23,60 @@ class Auth {
 
     public function login($email, $password) {
         try {
+            // Log login attempt
+            error_log("Login attempt for email: " . $email);
+
+            // Validate input
+            if (empty($email) || empty($password)) {
+                error_log("Login failed: Empty email or password");
+                return false;
+            }
+
+            // Get user from database
             $user = $this->db->fetchOne(
-                "SELECT * FROM users WHERE email = ? AND is_active = 1",
+                "SELECT * FROM users WHERE email = ?",
                 [$email]
             );
 
-            if ($user && password_verify($password, $user['password'])) {
+            echo "<pre>Debug at line " . __LINE__ . " (one-622): \n";
+            print_r($user);
+            die();  
+
+            // Log user query result
+            error_log("User query result: " . ($user ? "User found" : "User not found"));
+
+            // Check if user exists
+            if (!$user) {
+                error_log("Login failed: User not found");
+                return false;
+            }
+
+            // Check if user is active
+            if (!$user['is_active']) {
+                error_log("Login failed: User is not active");
+                return false;
+            }
+
+            // Verify password
+            $passwordValid = password_verify($password, $user['password']);
+            error_log("Password verification result: " . ($passwordValid ? "Valid" : "Invalid"));
+
+            if ($passwordValid) {
+                // Set session data
                 $_SESSION['user'] = [
                     'id' => $user['id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'role' => $user['role']
                 ];
+                error_log("Login successful for user: " . $user['email']);
                 return true;
             }
+
+            error_log("Login failed: Invalid password");
             return false;
         } catch (Exception $e) {
-            error_log("Login failed: " . $e->getMessage());
+            error_log("Login error: " . $e->getMessage());
             return false;
         }
     }
