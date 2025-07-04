@@ -120,6 +120,67 @@ $countries = $stmt->fetchAll();
             width: 100%;
             height: 100%;
         }
+        
+        /* تنسيق النافذة المنبثقة */
+        .leaflet-popup-content {
+            margin: 10px 12px;
+            min-width: 250px;
+        }
+        .popup-content {
+            padding: 5px;
+        }
+        .popup-content h6 {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0;
+            font-size: 1rem;
+        }
+        .place-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .place-icon i {
+            color: white;
+            font-size: 16px;
+        }
+        .popup-content .table {
+            margin-bottom: 10px;
+            border: 1px solid #dee2e6;
+        }
+        .popup-content .table th {
+            width: 40%;
+            font-size: 0.85rem;
+            vertical-align: middle;
+            background-color: #f8f9fa;
+            border-left: 1px solid #dee2e6;
+        }
+        .popup-content .table td {
+            font-size: 0.85rem;
+            vertical-align: middle;
+        }
+        .popup-content .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        .popup-content .badge {
+            font-size: 0.8rem;
+            padding: 5px 8px;
+            display: inline-block;
+            min-width: 60px;
+        }
+        .popup-content .btn {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+        .popup-content .btn i {
+            margin-left: 4px;
+        }
     </style>
 </head>
 <body>
@@ -337,16 +398,47 @@ $countries = $stmt->fetchAll();
                             icon: createCustomIcon(place.type)
                         });
 
-                        // إضافة نافذة منبثقة للعلامة مع تنسيق محسن
+                        // إضافة نافذة منبثقة للعلامة مع تنسيق محسن على شكل جدول
                         marker.bindPopup(`
-                            <div class="text-center">
-                                <h6 class="mb-2">${place.name}</h6>
-                                <p class="mb-1">
-                                    <strong>الدولة:</strong> ${place.country_name || 'غير محدد'}<br>
-                                    <strong>المدينة:</strong> ${place.city || 'غير محدد'}<br>
-                                    <strong>النوع:</strong> <span class="fw-bold ${place.type === 'خاص' ? 'text-success' : place.type === 'حكومة' ? 'text-primary' : ''}">${place.type || 'غير محدد'}</span><br>
-                                    <strong>العدد:</strong> ${place.total || '0'}
-                                </p>
+                            <div class="popup-content">
+                                <div class="d-flex align-items-center justify-content-center mb-2">
+                                    <div class="place-icon me-2 ${place.type === 'خاص' ? 'bg-success' : 'bg-primary'}">
+                                        <i class="mdi ${place.type === 'خاص' ? 'mdi-home' : 'mdi-office-building'}"></i>
+                                    </div>
+                                    <h6 class="mb-0">${place.name}</h6>
+                                </div>
+                                <table class="table table-sm table-bordered table-striped">
+                                    <tbody>
+                                        <tr>
+                                            <th class="bg-light text-end">الدولة:</th>
+                                            <td class="text-end">${place.country_name || 'غير محدد'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-end">المدينة:</th>
+                                            <td class="text-end">${place.city || 'غير محدد'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-end">النوع:</th>
+                                            <td class="text-end">
+                                                <span class="badge ${place.type === 'خاص' ? 'bg-success' : place.type === 'حكومة' ? 'bg-primary' : 'bg-secondary'}">
+                                                    ${place.type || 'غير محدد'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light text-end">العدد:</th>
+                                            <td class="text-end">${place.total || '0'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="showPlaceDetails(${place.id})">
+                                        <i class="mdi mdi-information-outline"></i> تفاصيل
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" onclick="window.location.href='places.php?id=${place.id}'">
+                                        <i class="mdi mdi-pencil"></i> تعديل
+                                    </button>
+                                </div>
                             </div>
                         `);
 
@@ -393,6 +485,117 @@ $countries = $stmt->fetchAll();
 
             // التحميل الأولي
             loadPlaces();
+            
+            /**
+             * عرض تفاصيل المكان في نافذة منبثقة
+             * @param {number} placeId - معرف المكان
+             */
+            window.showPlaceDetails = function(placeId) {
+                // البحث عن المكان في مصفوفة الأماكن
+                const place = places.find(p => p.id == placeId);
+                
+                if (!place) {
+                    alert('لم يتم العثور على معلومات المكان');
+                    return;
+                }
+                
+                // إنشاء محتوى النافذة المنبثقة
+                let modalContent = `
+                    <div class="modal fade" id="placeDetailsModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="mdi ${place.type === 'خاص' ? 'mdi-home text-success' : 'mdi-office-building text-primary'}"></i>
+                                        ${place.name}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-header bg-light">
+                                                    <i class="mdi mdi-information-outline"></i> معلومات أساسية
+                                                </div>
+                                                <div class="card-body">
+                                                    <table class="table table-sm table-bordered">
+                                                        <tbody>
+                                                            <tr>
+                                                                <th class="bg-light">الدولة:</th>
+                                                                <td>${place.country_name || 'غير محدد'}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th class="bg-light">المدينة:</th>
+                                                                <td>${place.city || 'غير محدد'}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th class="bg-light">النوع:</th>
+                                                                <td>
+                                                                    <span class="badge ${place.type === 'خاص' ? 'bg-success' : 'bg-primary'}">
+                                                                        ${place.type || 'غير محدد'}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th class="bg-light">العدد:</th>
+                                                                <td>${place.total || '0'}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-header bg-light">
+                                                    <i class="mdi mdi-map-marker"></i> الموقع
+                                                </div>
+                                                <div class="card-body">
+                                                    <table class="table table-sm table-bordered">
+                                                        <tbody>
+                                                            <tr>
+                                                                <th class="bg-light">خط العرض:</th>
+                                                                <td>${place.latitude}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th class="bg-light">خط الطول:</th>
+                                                                <td>${place.longitude}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <div class="text-center mt-2">
+                                                        <a href="https://www.google.com/maps?q=${place.latitude},${place.longitude}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                            <i class="mdi mdi-google-maps"></i> عرض في خرائط جوجل
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                                    <a href="places.php?id=${place.id}" class="btn btn-primary">
+                                        <i class="mdi mdi-pencil"></i> تعديل
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // إضافة النافذة المنبثقة إلى الصفحة
+                if ($('#placeDetailsModal').length) {
+                    $('#placeDetailsModal').remove();
+                }
+                
+                $('body').append(modalContent);
+                
+                // عرض النافذة المنبثقة
+                const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
+                modal.show();
+            };
         });
     </script>
 </body>
