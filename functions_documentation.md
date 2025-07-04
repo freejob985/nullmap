@@ -1,5 +1,369 @@
 # توثيق الدوال المستخدمة في نظام إدارة المواقع الجغرافية
 
+## التحديثات الجديدة
+
+### التحسينات المنفذة
+
+#### 1. تحديث تلقائي للإحداثيات عند اختيار الدولة في صفحة الدول
+
+- **التحسين**: تم إضافة قاموس للإحداثيات الافتراضية للدول المحددة وتحديث الإحداثيات تلقائيًا عند اختيار الدولة
+- **الملف**: `countries.php`
+- **التنفيذ**:
+  ```javascript
+  // قاموس إحداثيات الدول
+  const countryCoordinates = {
+      'مصر': { lat: 30.0444, lng: 31.2357 },
+      'ماليزيا': { lat: 3.1390, lng: 101.6869 },
+      'قطر': { lat: 25.2854, lng: 51.5310 },
+      'جورجيا': { lat: 41.7151, lng: 44.8271 },
+      'قبرص': { lat: 35.1856, lng: 33.3823 },
+      'المانيا': { lat: 52.5200, lng: 13.4050 },
+      'هولندا': { lat: 52.3676, lng: 4.9041 },
+      'بريطانيا': { lat: 51.5074, lng: -0.1278 },
+      'ج افريقيا': { lat: -33.9249, lng: 18.4241 }
+  };
+  
+  // دالة تحديث الإحداثيات بناءً على الدولة المحددة
+  function updateCoordinatesByCountry(formPrefix, countryName) {
+      if (countryCoordinates[countryName]) {
+          const coords = countryCoordinates[countryName];
+          $(`#${formPrefix}Latitude`).val(coords.lat);
+          $(`#${formPrefix}Longitude`).val(coords.lng);
+          
+          // تحديث الخريطة
+          if (formPrefix === 'add') {
+              addMarker.setLatLng([coords.lat, coords.lng]);
+              addMap.setView([coords.lat, coords.lng], 10);
+          } else if (formPrefix === 'edit') {
+              editMarker.setLatLng([coords.lat, coords.lng]);
+              editMap.setView([coords.lat, coords.lng], 10);
+          }
+      }
+  }
+  
+  // معالج حدث تغيير الدولة في نموذج الإضافة
+  $('#addCountryName').on('change', function() {
+      const countryName = $(this).val();
+      updateCoordinatesByCountry('add', countryName);
+  });
+  
+  // معالج حدث تغيير الدولة في نموذج التعديل
+  $('#editCountryName').on('change', function() {
+      const countryName = $(this).val();
+      updateCoordinatesByCountry('edit', countryName);
+  });
+  ```
+
+#### 2. تحسين تجربة المستخدم في اختيار الإحداثيات
+
+- **التحسين**: تم إضافة زر لإعادة تعيين الإحداثيات إلى قيم الدولة الافتراضية
+- **الملف**: `countries.php`
+- **التنفيذ**:
+  ```html
+  <!-- إضافة زر إعادة تعيين الإحداثيات في نموذج الإضافة -->
+  <div class="mb-3">
+      <button type="button" class="btn btn-secondary btn-sm" id="resetAddCoordinates">
+          إعادة تعيين الإحداثيات
+      </button>
+  </div>
+  
+  <!-- إضافة زر إعادة تعيين الإحداثيات في نموذج التعديل -->
+  <div class="mb-3">
+      <button type="button" class="btn btn-secondary btn-sm" id="resetEditCoordinates">
+          إعادة تعيين الإحداثيات
+      </button>
+  </div>
+  ```
+  
+  ```javascript
+  // معالج حدث زر إعادة تعيين الإحداثيات في نموذج الإضافة
+  $('#resetAddCoordinates').on('click', function() {
+      const countryName = $('#addCountryName').val();
+      updateCoordinatesByCountry('add', countryName);
+  });
+  
+  // معالج حدث زر إعادة تعيين الإحداثيات في نموذج التعديل
+  $('#resetEditCoordinates').on('click', function() {
+      const countryName = $('#editCountryName').val();
+      updateCoordinatesByCountry('edit', countryName);
+  });
+  ```
+
+### تحسينات مقترحة لتطوير النظام
+
+#### 1. تحسين أداء استرجاع بيانات الدول
+
+- **المشكلة**: يتم استرجاع بيانات الدول بشكل متكرر عند تغيير الدولة في نماذج الإضافة والتعديل
+- **الحل المقترح**: استخدام تقنية التخزين المؤقت (Caching) لبيانات الدول
+- **التنفيذ المقترح**:
+  ```javascript
+  // إنشاء كائن للتخزين المؤقت
+  const countriesCache = {};
+  
+  // تعديل دالة تغيير الدولة
+  $('#country_id').on('change', function() {
+      const countryId = $(this).val();
+      if (!countryId) return;
+      
+      // التحقق من وجود البيانات في التخزين المؤقت
+      if (countriesCache[countryId]) {
+          updateFormWithCountryData(countriesCache[countryId]);
+          return;
+      }
+      
+      // استرجاع البيانات من الخادم وتخزينها مؤقتًا
+      $.ajax({
+          url: `api/countries.php?cities=true&id=${countryId}`,
+          method: 'GET',
+          success: function(response) {
+              if (response.data) {
+                  // تخزين البيانات مؤقتًا
+                  countriesCache[countryId] = response.data;
+                  // تحديث النموذج
+                  updateFormWithCountryData(response.data);
+              }
+          }
+      });
+  });
+  
+  // دالة مساعدة لتحديث النموذج
+  function updateFormWithCountryData(data) {
+      // تحديث حقل المدينة
+      $('#city').val(data.city);
+      
+      // تحديث الإحداثيات
+      const lat = parseFloat(data.latitude);
+      const lng = parseFloat(data.longitude);
+      $('#latitude').val(lat);
+      $('#longitude').val(lng);
+      
+      // تحديث الخريطة
+      if (addMarker) addMap.removeLayer(addMarker);
+      addMarker = L.marker([lat, lng]).addTo(addMap);
+      addMap.setView([lat, lng], 8);
+  }
+  ```
+
+#### 2. تحسين تجربة المستخدم في اختيار الإحداثيات
+
+- **المشكلة**: عند اختيار دولة، يتم تحديث الإحداثيات تلقائيًا ولكن قد يرغب المستخدم في تعديلها
+- **الحل المقترح**: إضافة زر لإعادة تعيين الإحداثيات إلى قيم الدولة الافتراضية
+- **التنفيذ المقترح**:
+  ```html
+  <!-- إضافة زر إعادة تعيين الإحداثيات في نموذج الإضافة -->
+  <div class="mb-3">
+      <button type="button" class="btn btn-secondary btn-sm" id="resetCoordinates">
+          إعادة تعيين الإحداثيات إلى موقع الدولة
+      </button>
+  </div>
+  ```
+  
+  ```javascript
+  // معالج حدث النقر على زر إعادة التعيين
+  $('#resetCoordinates').on('click', function() {
+      const countryId = $('#country_id').val();
+      if (!countryId) return;
+      
+      // استرجاع بيانات الدولة وتحديث الإحداثيات
+      $.ajax({
+          url: `api/countries.php?cities=true&id=${countryId}`,
+          method: 'GET',
+          success: function(response) {
+              if (response.data) {
+                  // تحديث الإحداثيات
+                  const lat = parseFloat(response.data.latitude);
+                  const lng = parseFloat(response.data.longitude);
+                  $('#latitude').val(lat);
+                  $('#longitude').val(lng);
+                  
+                  // تحديث الخريطة
+                  if (addMarker) addMap.removeLayer(addMarker);
+                  addMarker = L.marker([lat, lng]).addTo(addMap);
+                  addMap.setView([lat, lng], 8);
+              }
+          }
+      });
+  });
+  ```
+
+#### 3. تحسين التحقق من صحة البيانات
+
+- **المشكلة**: التحقق من صحة البيانات يتم فقط على جانب الخادم
+- **الحل المقترح**: إضافة تحقق من صحة البيانات على جانب العميل قبل إرسالها
+- **التنفيذ المقترح**:
+  ```javascript
+  // دالة للتحقق من صحة نموذج إضافة مكان
+  function validatePlaceForm() {
+      let isValid = true;
+      const errors = {};
+      
+      // التحقق من اسم المكان
+      const name = $('#name').val().trim();
+      if (!name) {
+          errors.name = 'اسم المكان مطلوب';
+          isValid = false;
+      }
+      
+      // التحقق من اختيار الدولة
+      const countryId = $('#country_id').val();
+      if (!countryId) {
+          errors.country_id = 'يرجى اختيار الدولة';
+          isValid = false;
+      }
+      
+      // التحقق من المدينة
+      const city = $('#city').val().trim();
+      if (!city) {
+          errors.city = 'المدينة مطلوبة';
+          isValid = false;
+      }
+      
+      // التحقق من الإحداثيات
+      const lat = parseFloat($('#latitude').val());
+      const lng = parseFloat($('#longitude').val());
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+          errors.latitude = 'خط العرض يجب أن يكون بين -90 و 90';
+          isValid = false;
+      }
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+          errors.longitude = 'خط الطول يجب أن يكون بين -180 و 180';
+          isValid = false;
+      }
+      
+      // عرض الأخطاء إذا وجدت
+      if (!isValid) {
+          let errorMessage = 'يرجى تصحيح الأخطاء التالية:';
+          for (const field in errors) {
+              errorMessage += `\n- ${errors[field]}`;
+          }
+          
+          Swal.fire({
+              title: 'خطأ في البيانات',
+              text: errorMessage,
+              icon: 'error'
+          });
+      }
+      
+      return isValid;
+  }
+  
+  // تعديل معالج إرسال النموذج
+  $('#addPlaceForm').on('submit', function(e) {
+      e.preventDefault();
+      
+      // التحقق من صحة البيانات
+      if (!validatePlaceForm()) {
+          return;
+      }
+      
+      // إرسال البيانات إلى الخادم
+      $.ajax({
+          url: 'api/places.php',
+          method: 'POST',
+          data: $(this).serialize(),
+          success: function(response) {
+              $('#addPlaceModal').modal('hide');
+              table.ajax.reload();
+              Swal.fire({
+                  title: 'تم!',
+                  text: 'تمت إضافة المكان بنجاح',
+                  icon: 'success'
+              });
+          },
+          error: function(xhr) {
+              Swal.fire({
+                  title: 'خطأ!',
+                  text: xhr.responseJSON?.error || 'حدث خطأ أثناء إضافة المكان',
+                  icon: 'error'
+              });
+          }
+      });
+  });
+  ```
+
+#### 4. تحسين أمان النظام
+
+- **المشكلة**: عدم وجود حماية كافية ضد هجمات CSRF
+- **الحل المقترح**: إضافة رمز CSRF لجميع النماذج
+- **التنفيذ المقترح**:
+  ```php
+  // إضافة في ملف helpers/auth.php
+  public function generateCsrfToken() {
+      if (!isset($_SESSION['csrf_token'])) {
+          $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+      }
+      return $_SESSION['csrf_token'];
+  }
+  
+  public function validateCsrfToken($token) {
+      return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+  }
+  ```
+  
+  ```html
+  <!-- إضافة في نماذج الإضافة والتعديل -->
+  <input type="hidden" name="csrf_token" value="<?php echo $auth->generateCsrfToken(); ?>">
+  ```
+  
+  ```php
+  // إضافة في ملفات API
+  // التحقق من رمز CSRF
+  if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+      $token = $_POST['csrf_token'] ?? '';
+      if (empty($token) || !$auth->validateCsrfToken($token)) {
+          http_response_code(403);
+          echo json_encode(['error' => 'CSRF token validation failed']);
+          exit;
+      }
+  }
+  ```
+
+#### 5. تحسين تنظيم الكود
+
+- **المشكلة**: تكرار الكود في معالجات الأحداث لنماذج الإضافة والتعديل
+- **الحل المقترح**: استخراج الوظائف المشتركة إلى دوال مستقلة
+- **التنفيذ المقترح**:
+  ```javascript
+  // دالة مشتركة لتحديث حقول النموذج بناءً على الدولة المحددة
+  function updateFormFieldsByCountry(countryId, formPrefix = '', mapObj = null, markerObj = null) {
+      if (!countryId) return;
+      
+      // استرجاع بيانات الدولة
+      $.ajax({
+          url: `api/countries.php?cities=true&id=${countryId}`,
+          method: 'GET',
+          success: function(response) {
+              if (response.data) {
+                  // تحديث حقل المدينة
+                  $(`#${formPrefix}city`).val(response.data.city);
+                  
+                  // تحديث الإحداثيات
+                  const lat = parseFloat(response.data.latitude);
+                  const lng = parseFloat(response.data.longitude);
+                  $(`#${formPrefix}latitude`).val(lat);
+                  $(`#${formPrefix}longitude`).val(lng);
+                  
+                  // تحديث الخريطة إذا كانت متوفرة
+                  if (mapObj && markerObj) {
+                      if (markerObj) mapObj.removeLayer(markerObj);
+                      markerObj = L.marker([lat, lng]).addTo(mapObj);
+                      mapObj.setView([lat, lng], 8);
+                  }
+              }
+          }
+      });
+  }
+  
+  // استخدام الدالة في معالجات الأحداث
+  $('#country_id').on('change', function() {
+      updateFormFieldsByCountry($(this).val(), '', addMap, addMarker);
+  });
+  
+  $('#editCountryId').on('change', function() {
+      updateFormFieldsByCountry($(this).val(), 'edit', editMap, editMarker);
+  });
+  ```
+
 ## الدوال المستخدمة في API
 
 ### api/countries.php

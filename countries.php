@@ -87,7 +87,18 @@ $auth->requireLogin();
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="name" class="form-label">اسم الدولة</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+                            <select class="form-select" id="name" name="name" required>
+                                <option value="">اختر الدولة</option>
+                                <option value="مصر">مصر</option>
+                                <option value="ماليزيا">ماليزيا</option>
+                                <option value="قطر">قطر</option>
+                                <option value="جورجيا">جورجيا</option>
+                                <option value="قبرص">قبرص</option>
+                                <option value="المانيا">المانيا</option>
+                                <option value="هولندا">هولندا</option>
+                                <option value="بريطانيا">بريطانيا</option>
+                                <option value="ج افريقيا">ج افريقيا</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label for="city" class="form-label">المدينة</label>
@@ -100,6 +111,11 @@ $auth->requireLogin();
                         <div class="mb-3">
                             <label for="longitude" class="form-label">خط الطول</label>
                             <input type="number" class="form-control" id="longitude" name="longitude" step="any" required>
+                        </div>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-secondary btn-sm" id="resetCoordinates">
+                                إعادة تعيين الإحداثيات إلى موقع الدولة
+                            </button>
                         </div>
                         <div id="map" class="map-container mb-3"></div>
                     </div>
@@ -125,7 +141,18 @@ $auth->requireLogin();
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="editName" class="form-label">اسم الدولة</label>
-                            <input type="text" class="form-control" id="editName" name="name" required>
+                            <select class="form-select" id="editName" name="name" required>
+                                <option value="">اختر الدولة</option>
+                                <option value="مصر">مصر</option>
+                                <option value="ماليزيا">ماليزيا</option>
+                                <option value="قطر">قطر</option>
+                                <option value="جورجيا">جورجيا</option>
+                                <option value="قبرص">قبرص</option>
+                                <option value="المانيا">المانيا</option>
+                                <option value="هولندا">هولندا</option>
+                                <option value="بريطانيا">بريطانيا</option>
+                                <option value="ج افريقيا">ج افريقيا</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label for="editCity" class="form-label">المدينة</label>
@@ -138,6 +165,11 @@ $auth->requireLogin();
                         <div class="mb-3">
                             <label for="editLongitude" class="form-label">خط الطول</label>
                             <input type="number" class="form-control" id="editLongitude" name="longitude" step="any" required>
+                        </div>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-secondary btn-sm" id="editResetCoordinates">
+                                إعادة تعيين الإحداثيات إلى موقع الدولة
+                            </button>
                         </div>
                         <div id="editMap" class="map-container mb-3"></div>
                     </div>
@@ -211,6 +243,19 @@ $auth->requireLogin();
             let addMap = L.map('map').setView([24.7136, 46.6753], 4);
             let editMap = L.map('editMap').setView([24.7136, 46.6753], 4);
             let addMarker, editMarker;
+            
+            // تعريف إحداثيات الدول
+            const countryCoordinates = {
+                'مصر': { lat: 30.0444, lng: 31.2357 },
+                'ماليزيا': { lat: 3.1390, lng: 101.6869 },
+                'قطر': { lat: 25.2854, lng: 51.5310 },
+                'جورجيا': { lat: 41.7151, lng: 44.8271 },
+                'قبرص': { lat: 35.1856, lng: 33.3823 },
+                'المانيا': { lat: 52.5200, lng: 13.4050 },
+                'هولندا': { lat: 52.3676, lng: 4.9041 },
+                'بريطانيا': { lat: 51.5074, lng: -0.1278 },
+                'ج افريقيا': { lat: -33.9249, lng: 18.4241 }
+            };
 
             // Add tile layer to both maps
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(addMap);
@@ -239,6 +284,56 @@ $auth->requireLogin();
 
             $('#editCountryModal').on('shown.bs.modal', function() {
                 editMap.invalidateSize();
+            });
+            
+            // دالة مساعدة لتحديث الإحداثيات بناءً على الدولة المحددة
+            function updateCoordinatesByCountry(countryName, isEditForm = false) {
+                if (countryName && countryCoordinates[countryName]) {
+                    const coords = countryCoordinates[countryName];
+                    const prefix = isEditForm ? 'edit' : '';
+                    const latField = isEditForm ? '#editLatitude' : '#latitude';
+                    const lngField = isEditForm ? '#editLongitude' : '#longitude';
+                    const map = isEditForm ? editMap : addMap;
+                    let marker = isEditForm ? editMarker : addMarker;
+                    
+                    // تحديث حقول الإحداثيات
+                    $(latField).val(coords.lat);
+                    $(lngField).val(coords.lng);
+                    
+                    // تحديث الخريطة
+                    if (marker) map.removeLayer(marker);
+                    marker = L.marker([coords.lat, coords.lng]).addTo(map);
+                    map.setView([coords.lat, coords.lng], 6);
+                    
+                    // تحديث المتغير العام للعلامة
+                    if (isEditForm) {
+                        editMarker = marker;
+                    } else {
+                        addMarker = marker;
+                    }
+                }
+            }
+            
+            // تحديث الإحداثيات عند اختيار الدولة في نموذج الإضافة
+            $('#name').on('change', function() {
+                updateCoordinatesByCountry($(this).val(), false);
+            });
+            
+            // تحديث الإحداثيات عند اختيار الدولة في نموذج التعديل
+            $('#editName').on('change', function() {
+                updateCoordinatesByCountry($(this).val(), true);
+            });
+            
+            // معالج حدث النقر على زر إعادة التعيين في نموذج الإضافة
+            $('#resetCoordinates').on('click', function() {
+                const selectedCountry = $('#name').val();
+                updateCoordinatesByCountry(selectedCountry, false);
+            });
+            
+            // معالج حدث النقر على زر إعادة التعيين في نموذج التعديل
+            $('#editResetCoordinates').on('click', function() {
+                const selectedCountry = $('#editName').val();
+                updateCoordinatesByCountry(selectedCountry, true);
             });
 
             // Handle form submission for adding
@@ -355,4 +450,4 @@ $auth->requireLogin();
         });
     </script>
 </body>
-</html> 
+</html>

@@ -40,7 +40,18 @@
                             <span class="input-group-text">
                                 <i class="mdi mdi-earth"></i>
                             </span>
-                            <input type="text" class="form-control" id="countryName" name="name" required>
+                            <select class="form-select" id="countryName" name="name" required>
+                                <option value="">اختر الدولة</option>
+                                <option value="مصر">مصر</option>
+                                <option value="ماليزيا">ماليزيا</option>
+                                <option value="قطر">قطر</option>
+                                <option value="جورجيا">جورجيا</option>
+                                <option value="قبرص">قبرص</option>
+                                <option value="المانيا">المانيا</option>
+                                <option value="هولندا">هولندا</option>
+                                <option value="بريطانيا">بريطانيا</option>
+                                <option value="ج افريقيا">ج افريقيا</option>
+                            </select>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -119,4 +130,4 @@
         </table>
     </div>
 </div>
-<?php endif; ?> 
+<?php endif; ?>
