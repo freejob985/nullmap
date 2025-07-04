@@ -38,9 +38,9 @@ class Auth {
                 [$email]
             );
 
-            echo "<pre>Debug at line " . __LINE__ . " (one-622): \n";
-            print_r($user);
-            die();  
+            // echo "<pre>Debug at line " . __LINE__ . " (one-622): \n";
+            // print_r($user);
+            // die();  
 
             // Log user query result
             error_log("User query result: " . ($user ? "User found" : "User not found"));

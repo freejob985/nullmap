@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($validation->validate($data, $rules)) {
         // Attempt login
      //   echo "<pre>Debug at line " . __LINE__ . " (one-622): \n";
-        echo $auth->login($data['email'], $data['password']);
-        print_r($data);
-        die();
+        // echo $auth->login($data['email'], $data['password']);
+        // print_r($data);
+        // die();
 
         if ($auth->login($data['email'], $data['password'])) {
             // Successful login
