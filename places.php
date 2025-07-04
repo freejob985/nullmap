@@ -297,6 +297,35 @@ $countries = $stmt->fetchAll();
                 editMap.invalidateSize();
             });
 
+            // Handle country change to get city and coordinates
+            $('#country_id').on('change', function() {
+                const countryId = $(this).val();
+                if (!countryId) return;
+                
+                // Get city and coordinates for selected country
+                $.ajax({
+                    url: `api/countries.php?cities=true&id=${countryId}`,
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.data) {
+                            // Fill city field
+                            $('#city').val(response.data.city);
+                            
+                            // Set coordinates
+                            const lat = parseFloat(response.data.latitude);
+                            const lng = parseFloat(response.data.longitude);
+                            $('#latitude').val(lat);
+                            $('#longitude').val(lng);
+                            
+                            // Update map
+                            if (addMarker) addMap.removeLayer(addMarker);
+                            addMarker = L.marker([lat, lng]).addTo(addMap);
+                            addMap.setView([lat, lng], 8);
+                        }
+                    }
+                });
+            });
+            
             // Handle form submission for adding
             $('#addPlaceForm').on('submit', function(e) {
                 e.preventDefault();
@@ -347,6 +376,35 @@ $countries = $stmt->fetchAll();
                 });
             });
 
+            // Handle country change in edit form
+            $('#editCountryId').on('change', function() {
+                const countryId = $(this).val();
+                if (!countryId) return;
+                
+                // Get city and coordinates for selected country
+                $.ajax({
+                    url: `api/countries.php?cities=true&id=${countryId}`,
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.data) {
+                            // Fill city field
+                            $('#editCity').val(response.data.city);
+                            
+                            // Set coordinates
+                            const lat = parseFloat(response.data.latitude);
+                            const lng = parseFloat(response.data.longitude);
+                            $('#editLatitude').val(lat);
+                            $('#editLongitude').val(lng);
+                            
+                            // Update map
+                            if (editMarker) editMap.removeLayer(editMarker);
+                            editMarker = L.marker([lat, lng]).addTo(editMap);
+                            editMap.setView([lat, lng], 8);
+                        }
+                    }
+                });
+            });
+            
             // Handle form submission for editing
             $('#editPlaceForm').on('submit', function(e) {
                 e.preventDefault();
@@ -414,4 +472,4 @@ $countries = $stmt->fetchAll();
         });
     </script>
 </body>
-</html> 
+</html>

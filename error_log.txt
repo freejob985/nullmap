@@ -1,7 +1,21 @@
 قائمة الأخطاء المكتشفة وحلولها
 =========================
 
-1. خطأ: Call to undefined method Database::prepare()
+1. خطأ: Call to undefined method Database::query()
+   الملف: api/places.php
+   السطر: 59
+   الوصف: محاولة استدعاء دالة query() غير المعرفة في كلاس Database
+   الحل: تم استبدال استدعاء $db->query() بـ $db->fetchAll() المعرفة في كلاس Database
+   التاريخ: 2024-06-01
+
+2. خطأ: Call to undefined method Database::prepare()
+   الملف: api/places.php
+   السطر: 91
+   الوصف: محاولة استدعاء دالة prepare() غير المعرفة مباشرة في كلاس Database
+   الحل: تم استبدال استدعاء $db->prepare() بالدوال المناسبة مثل $db->fetchOne() و $db->execute() و $db->insert()
+   التاريخ: 2024-06-01
+
+3. خطأ: Call to undefined method Database::prepare()
    الملف: api/countries.php
    السطر: 79
    الوصف: محاولة استدعاء دالة prepare() مباشرة من كائن Database
@@ -93,4 +107,4 @@
     - تم إضافة فحص صلاحية الجلسة
     - تم إضافة تجديد تلقائي للجلسة
     - تم إضافة تنبيه قبل انتهاء الجلسة
-    التاريخ: 2024-03-17 
+    التاريخ: 2024-03-17

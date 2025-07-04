@@ -27,6 +27,29 @@ $auth->requireLogin();
 // Handle different HTTP methods
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
+        // Get cities by country ID
+        if (isset($_GET['cities']) && isset($_GET['id'])) {
+            $id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
+            if (!$id) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid country ID']);
+                exit;
+            }
+
+            $stmt = $db->getConnection()->prepare('SELECT city, latitude, longitude FROM countries WHERE id = ?');
+            $stmt->execute([$id]);
+            $country = $stmt->fetch();
+
+            if (!$country) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Country not found']);
+                exit;
+            }
+
+            echo json_encode(['data' => $country]);
+            exit;
+        }
+        
         // Get single country by ID
         if (isset($_GET['id'])) {
             $id = filter_var($_GET['id'], FILTER_VALIDATE_INT);
@@ -221,4 +244,4 @@ switch ($_SERVER['REQUEST_METHOD']) {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
         break;
-} 
+}
