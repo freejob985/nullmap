@@ -7,6 +7,10 @@
  * - POST: Create new user
  * - PUT: Update user
  * - DELETE: Delete user
+ * 
+ * Also handles user permissions management:
+ * - GET ?permissions=true&id={id}: Get user permissions
+ * - PUT ?permissions=true&id={id}: Update user permissions
  */
 
 require_once __DIR__ . '/../helpers/database.php';
@@ -21,8 +25,94 @@ $validation = Validation::getInstance();
 // Set JSON response headers
 header('Content-Type: application/json; charset=utf-8');
 
-// Require authentication and admin role
-$auth->requireAdmin();
+// Require authentication
+$auth->requireLogin();
+
+// Handle permissions request
+if (isset($_GET['permissions'])) {
+    // Check if user has permission to manage permissions
+    if (!$auth->hasPermission('manage_permissions') && !$auth->isAdmin()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to manage user permissions']);
+        exit;
+    }
+    
+    // Get user ID
+    $userId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+    
+    if (!$userId) {
+        http_response_code(400);
+        echo json_encode(['error' => 'User ID is required']);
+        exit;
+    }
+    
+    // Check if user exists
+    $user = $db->fetchOne('SELECT id, name, email, role FROM users WHERE id = ?', [$userId]);
+    
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+        exit;
+    }
+    
+    // Handle GET request - Get user permissions
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $userPermissions = $auth->getUserPermissions($userId);
+        
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'user' => $user,
+                'permissions' => $userPermissions
+            ]
+        ]);
+        exit;
+    }
+    
+    // Handle PUT request - Update user permissions
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+        // Get request body
+        $requestBody = file_get_contents('php://input');
+        $data = json_decode($requestBody, true);
+        
+        if (!isset($data['permissions']) || !is_array($data['permissions'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Permissions array is required']);
+            exit;
+        }
+        
+        // Update user permissions
+        $result = $auth->assignPermissionsToUser($userId, $data['permissions']);
+        
+        if ($result) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'User permissions updated successfully',
+                'data' => [
+                    'user_id' => $userId,
+                    'permissions' => $data['permissions']
+                ]
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to update user permissions']);
+        }
+        exit;
+    }
+    
+    // Method not allowed
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
+    exit;
+}
+
+// Regular users API
+// Require admin role or manage_users permission
+if (!$auth->hasPermission('manage_users') && !$auth->isAdmin()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden: You do not have permission to manage users']);
+    exit;
+}
 
 // Handle different HTTP methods
 switch ($_SERVER['REQUEST_METHOD']) {
@@ -246,4 +336,4 @@ switch ($_SERVER['REQUEST_METHOD']) {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
         break;
-} 
+}

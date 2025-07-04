@@ -3,6 +3,7 @@
  * Places Page
  * 
  * Displays a list of all places in a DataTable with CRUD operations.
+ * Includes export functionality and permission-based access control.
  */
 
 require_once __DIR__ . '/helpers/database.php';
@@ -14,6 +15,12 @@ $auth = Auth::getInstance();
 
 // Require authentication
 $auth->requireLogin();
+
+// Check if user has permission to view places
+if (!$auth->hasPermission('view_places') && !$auth->isAdmin()) {
+    header('Location: /index.php');
+    exit;
+}
 
 // Get countries for dropdown
 $stmt = $db->getConnection()->query('SELECT id, name FROM countries ORDER BY name');
@@ -49,12 +56,19 @@ $countries = $stmt->fetchAll();
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">الأماكن</h5>
-                <?php if ($auth->isAdmin()): ?>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlaceModal">
-                    <i class="mdi mdi-plus me-1"></i>
-                    إضافة مكان
-                </button>
-                <?php endif; ?>
+                <div>
+                    <?php if ($auth->hasPermission('export_places') || $auth->isAdmin()): ?>
+                    <a href="api/export.php?type=places" class="btn btn-success me-2">
+                        <i class="mdi mdi-file-excel me-1"></i>
+                        تصدير إلى Excel
+                    </a>
+                    <?php endif; ?>
+                    <?php if ($auth->hasPermission('add_places') || $auth->isAdmin()): ?>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlaceModal">
+                        <i class="mdi mdi-plus me-1"></i>
+                        إضافة مكان
+                    </button>
+                    <?php endif; ?>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -70,7 +84,7 @@ $countries = $stmt->fetchAll();
                                 <th>خط العرض</th>
                                 <th>خط الطول</th>
                                 <th>تاريخ الإضافة</th>
-                                <?php if ($auth->isAdmin()): ?>
+                                <?php if ($auth->hasPermission('edit_places') || $auth->hasPermission('delete_places') || $auth->isAdmin()): ?>
                                 <th>الإجراءات</th>
                                 <?php endif; ?>
                             </tr>
@@ -81,7 +95,7 @@ $countries = $stmt->fetchAll();
         </div>
     </div>
 
-    <?php if ($auth->isAdmin()): ?>
+    <?php if ($auth->hasPermission('add_places') || $auth->hasPermission('edit_places') || $auth->isAdmin()): ?>
     <!-- Add Place Modal -->
     <div class="modal fade" id="addPlaceModal" tabindex="-1">
         <div class="modal-dialog">
@@ -240,18 +254,29 @@ $countries = $stmt->fetchAll();
                             return new Date(data).toLocaleDateString('ar-SA');
                         }
                     },
-                    <?php if ($auth->isAdmin()): ?>
+                    <?php if ($auth->hasPermission('edit_places') || $auth->hasPermission('delete_places') || $auth->isAdmin()): ?>
                     {
                         data: null,
                         render: function(data) {
-                            return `
+                            let buttons = '';
+                            
+                            <?php if ($auth->hasPermission('edit_places') || $auth->isAdmin()): ?>
+                            buttons += `
                                 <button class="btn btn-sm btn-primary edit-btn" data-id="${data.id}">
                                     <i class="mdi mdi-pencil"></i>
                                 </button>
+                            `;
+                            <?php endif; ?>
+                            
+                            <?php if ($auth->hasPermission('delete_places') || $auth->isAdmin()): ?>
+                            buttons += `
                                 <button class="btn btn-sm btn-danger delete-btn" data-id="${data.id}">
                                     <i class="mdi mdi-delete"></i>
                                 </button>
                             `;
+                            <?php endif; ?>
+                            
+                            return buttons;
                         }
                     }
                     <?php endif; ?>
@@ -262,7 +287,7 @@ $countries = $stmt->fetchAll();
                 }
             });
 
-            <?php if ($auth->isAdmin()): ?>
+            <?php if ($auth->hasPermission('add_places') || $auth->hasPermission('edit_places') || $auth->isAdmin()): ?>
             // Initialize maps
             let addMap = L.map('map').setView([24.7136, 46.6753], 4);
             let editMap = L.map('editMap').setView([24.7136, 46.6753], 4);

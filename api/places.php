@@ -24,6 +24,13 @@ header('Content-Type: application/json; charset=utf-8');
 // Require authentication
 $auth->requireLogin();
 
+// Check if user has permission to view places
+if (!$auth->hasPermission('view_places') && !$auth->isAdmin()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'ليس لديك صلاحية لعرض الأماكن']);
+    exit;
+}
+
 // Handle different HTTP methods
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
@@ -64,8 +71,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         break;
 
     case 'POST':
-        // Require admin role for creating
-        $auth->requireAdmin();
+        // Check if user has permission to add places
+        if (!$auth->hasPermission('add_places') && !$auth->isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['error' => 'ليس لديك صلاحية لإضافة الأماكن']);
+            exit;
+        }
 
         // Validate input
         $data = $validation->sanitize($_POST);
@@ -132,8 +143,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         break;
 
     case 'PUT':
-        // Require admin role for updating
-        $auth->requireAdmin();
+        // Check if user has permission to edit places
+        if (!$auth->hasPermission('edit_places') && !$auth->isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['error' => 'ليس لديك صلاحية لتعديل الأماكن']);
+            exit;
+        }
 
         // Check for ID
         if (!isset($_GET['id'])) {
@@ -225,8 +240,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         break;
 
     case 'DELETE':
-        // Require admin role for deleting
-        $auth->requireAdmin();
+        // Check if user has permission to delete places
+        if (!$auth->hasPermission('delete_places') && !$auth->isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['error' => 'ليس لديك صلاحية لحذف الأماكن']);
+            exit;
+        }
 
         // Check for ID
         if (!isset($_GET['id'])) {
