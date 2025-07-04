@@ -2,6 +2,219 @@
 
 ## التحديثات الجديدة
 
+### مشكلة عدم إضافة نوع المكان (حكومي أو خاص)
+
+#### وصف المشكلة
+عند إضافة مكان جديد، لم يكن يتم حفظ نوع المكان (حكومي أو خاص) في قاعدة البيانات بشكل صحيح.
+
+#### سبب المشكلة
+تم اكتشاف عدم تطابق بين قيم النوع المستخدمة في واجهة المستخدم وقيم النوع المتوقعة في واجهة برمجة التطبيقات (API):
+
+- في واجهة المستخدم (places.php): تم استخدام القيم العربية "خاص" و"حكومة"
+- في واجهة برمجة التطبيقات (api/places.php): يتم التحقق من القيم الإنجليزية "private" و"government"
+
+#### الحل المطبق
+1. تم تعديل نموذج إضافة المكان في ملف places.php (الأسطر 116-119) لاستخدام القيم الإنجليزية كقيم للنموذج مع الاحتفاظ بالنص العربي للعرض:
+   - تغيير `value="خاص"` إلى `value="private"`
+   - تغيير `value="حكومة"` إلى `value="government"`
+
+2. تم تعديل نموذج تعديل المكان في ملف places.php (الأسطر 177-180) بنفس الطريقة:
+   - تغيير `value="خاص"` إلى `value="private"`
+   - تغيير `value="حكومة"` إلى `value="government"`
+
+#### الدوال المتأثرة
+
+##### 1. نموذج إضافة المكان (places.php)
+```html
+<div class="mb-3">
+    <label for="type" class="form-label">النوع</label>
+    <select class="form-select" id="type" name="type" required>
+        <option value="">اختر النوع</option>
+        <option value="private">خاص</option>
+        <option value="government">حكومة</option>
+    </select>
+</div>
+```
+
+##### 2. نموذج تعديل المكان (places.php)
+```html
+<div class="mb-3">
+    <label for="editType" class="form-label">النوع</label>
+    <select class="form-select" id="editType" name="type" required>
+        <option value="">اختر النوع</option>
+        <option value="private">خاص</option>
+        <option value="government">حكومة</option>
+    </select>
+</div>
+```
+
+##### 3. التحقق من النوع في API (api/places.php)
+```php
+$rules = [
+    'name' => ['required', 'string', 'max:255'],
+    'total' => ['required', 'integer', 'min:0'],
+    'type' => ['required', 'in:private,government'],
+    'country_id' => ['required', 'integer', 'exists:countries,id'],
+    'city' => ['required', 'string', 'max:255'],
+    'latitude' => ['required', 'numeric', 'between:-90,90'],
+    'longitude' => ['required', 'numeric', 'between:-180,180']
+];
+```
+
+#### تدفق البيانات
+1. المستخدم يختار نوع المكان من القائمة المنسدلة في نموذج الإضافة أو التعديل
+2. عند اختيار "خاص"، يتم إرسال القيمة "private" إلى الخادم
+3. عند اختيار "حكومة"، يتم إرسال القيمة "government" إلى الخادم
+4. يتحقق API من القيمة المرسلة ويتأكد من أنها إما "private" أو "government"
+5. يتم حفظ القيمة في قاعدة البيانات
+6. عند عرض البيانات، يتم تحويل القيمة المخزنة إلى النص العربي المقابل للعرض
+
+### تحسينات صفحة الخريطة (map.php)
+
+#### 1. إضافة تصفية حسب المدينة
+
+- **التحسين**: تم إضافة خيار تصفية الأماكن حسب المدينة مع تحميل المدن ديناميكياً بناءً على الدولة المختارة
+- **الملف**: `map.php`
+- **التنفيذ**:
+  ```javascript
+  /**
+   * تحميل المدن المتاحة بناءً على الدولة المختارة
+   * @param {number} countryId - معرف الدولة المختارة
+   */
+  function loadCities(countryId) {
+      // تفريغ قائمة المدن
+      $('#cityFilter').empty().append('<option value="">الكل</option>');
+      
+      if (!countryId) {
+          return;
+      }
+      
+      // تحميل المدن الفريدة من البيانات المتاحة
+      const uniqueCities = [...new Set(cities.filter(city => city.country_id == countryId).map(city => city.city))];
+      uniqueCities.sort().forEach(city => {
+          $('#cityFilter').append(`<option value="${city}">${city}</option>`);
+      });
+  }
+  ```
+
+#### 2. تحسين عرض العلامات على الخريطة
+
+- **التحسين**: تم تحسين مظهر العلامات على الخريطة بإضافة أيقونات مميزة وتكبير حجمها وإضافة تأثيرات تفاعلية
+- **الملف**: `map.php`
+- **التنفيذ**:
+  ```javascript
+  /**
+   * إنشاء أيقونة مخصصة للعلامة على الخريطة
+   * @param {string} type - نوع المكان (خاص أو حكومة)
+   * @returns {L.DivIcon} - أيقونة مخصصة للعلامة
+   */
+  function createCustomIcon(type) {
+      const isPrivate = type === 'خاص';
+      const iconClass = isPrivate ? 'marker-private' : 'marker-government';
+      const iconName = isPrivate ? 'mdi-home' : 'mdi-office-building';
+      
+      return L.divIcon({
+          className: 'custom-marker',
+          html: `<div class="custom-marker-icon ${iconClass}" style="width: 24px; height: 24px;"><i class="mdi ${iconName}" style="color: white; font-size: 14px;"></i></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+          popupAnchor: [0, -12]
+      });
+  }
+  ```
+
+  ```css
+  /* تنسيق العلامات المخصصة */
+  .custom-marker-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+      border: 2px solid white;
+      transition: transform 0.2s;
+  }
+  .custom-marker-icon:hover {
+      transform: scale(1.2);
+      z-index: 1001;
+  }
+  .marker-private {
+      background-color: #4CAF50;
+  }
+  .marker-government {
+      background-color: #2196F3;
+  }
+  ```
+
+#### 3. تحسين تنظيم الكود وتوثيقه
+
+- **التحسين**: تم إعادة تنظيم الكود وفصل المنطق إلى دوال مستقلة ذات مسؤوليات محددة وإضافة تعليقات توثيقية
+- **الملف**: `map.php`
+- **التنفيذ**:
+  ```javascript
+  /**
+   * تحميل الأماكن وعرضها على الخريطة
+   */
+  function loadPlaces() {
+      const countryId = $('#countryFilter').val();
+      const cityName = $('#cityFilter').val();
+      const type = $('#typeFilter').val();
+      
+      // تفريغ العلامات الموجودة
+      markers.clearLayers();
+      allMarkers = [];
+
+      // جلب الأماكن من API
+      $.get('api/places.php', function(response) {
+          // تخزين جميع المدن للاستخدام في التصفية
+          cities = response.data;
+          
+          response.data.forEach(place => {
+              // تطبيق التصفية
+              if ((countryId && place.country_id != countryId) || 
+                  (cityName && place.city != cityName) ||
+                  (type && place.type != type)) {
+                  return;
+              }
+
+              // إنشاء العلامة بأيقونة مخصصة
+              const marker = L.marker([place.latitude, place.longitude], {
+                  icon: createCustomIcon(place.type)
+              });
+
+              // إضافة نافذة منبثقة للعلامة
+              marker.bindPopup(`
+                  <div class="text-center">
+                      <h6 class="mb-2">${place.name}</h6>
+                      <p class="mb-1">
+                          <strong>الدولة:</strong> ${place.country_name}<br>
+                          <strong>المدينة:</strong> ${place.city}<br>
+                          <strong>النوع:</strong> ${place.type}<br>
+                          <strong>العدد:</strong> ${place.total}
+                      </p>
+                  </div>
+              `);
+
+              allMarkers.push(marker);
+              markers.addLayer(marker);
+          });
+
+          map.addLayer(markers);
+
+          // ضبط حدود الخريطة إذا كانت هناك علامات
+          if (allMarkers.length > 0) {
+              const group = L.featureGroup(allMarkers);
+              map.fitBounds(group.getBounds());
+          }
+          
+          // تحميل المدن إذا تم اختيار دولة
+          if (countryId && !cityName) {
+              loadCities(countryId);
+          }
+      });
+  }
+  ```
+
 ### التحسينات المنفذة
 
 #### 1. تحديث تلقائي للإحداثيات عند اختيار الدولة في صفحة الدول

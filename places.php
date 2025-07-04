@@ -115,8 +115,8 @@ $countries = $stmt->fetchAll();
                             <label for="type" class="form-label">النوع</label>
                             <select class="form-select" id="type" name="type" required>
                                 <option value="">اختر النوع</option>
-                                <option value="خاص">خاص</option>
-                                <option value="حكومة">حكومة</option>
+                                <option value="private">خاص</option>
+                                <option value="government">حكومة</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -176,8 +176,8 @@ $countries = $stmt->fetchAll();
                             <label for="editType" class="form-label">النوع</label>
                             <select class="form-select" id="editType" name="type" required>
                                 <option value="">اختر النوع</option>
-                                <option value="خاص">خاص</option>
-                                <option value="حكومة">حكومة</option>
+                                <option value="private">خاص</option>
+                                <option value="government">حكومة</option>
                             </select>
                         </div>
                         <div class="mb-3">

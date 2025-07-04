@@ -229,7 +229,7 @@ $auth->requireLogin();
                                 </button>
                             `;
                         }
-                    }
+                    },
                     <?php endif; ?>
                 ],
                 order: [[0, 'desc']],

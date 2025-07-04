@@ -72,10 +72,53 @@ $countries = $stmt->fetchAll();
             align-items: center;
         }
         .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-left: 8px;
+            width: 30px;
+            height: 30px;
+            margin-left: 10px;
             border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .legend-color i {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        /* تنسيق العلامات المخصصة */
+        .custom-marker-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            border: 3px solid white;
+            transition: all 0.3s ease;
+            width: 36px !important;
+            height: 36px !important;
+        }
+        .custom-marker-icon:hover {
+            transform: scale(1.3);
+            z-index: 1001;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.8);
+        }
+        .marker-private {
+            background-color: #4CAF50;
+        }
+        .marker-government {
+            background-color: #2196F3;
+        }
+        .custom-marker-icon i {
+            color: white;
+            font-size: 18px !important;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -101,6 +144,13 @@ $countries = $stmt->fetchAll();
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label for="cityFilter" class="form-label">المدينة</label>
+                    <select class="form-select form-select-sm" id="cityFilter">
+                        <option value="">الكل</option>
+                        <!-- سيتم تحميل المدن ديناميكياً عند اختيار الدولة -->
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="typeFilter" class="form-label">النوع</label>
                     <select class="form-select form-select-sm" id="typeFilter">
                         <option value="">الكل</option>
@@ -108,16 +158,27 @@ $countries = $stmt->fetchAll();
                         <option value="حكومة">حكومة</option>
                     </select>
                 </div>
+                <div class="mb-3">
+                    <label for="placeFilter" class="form-label">الأماكن</label>
+                    <select class="form-select form-select-sm" id="placeFilter">
+                        <option value="">الكل</option>
+                        <!-- سيتم تحميل الأماكن ديناميكياً -->
+                    </select>
+                </div>
             </div>
 
             <!-- Legend -->
             <div class="legend">
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #4CAF50;"></div>
+                    <div class="legend-color" style="background: #4CAF50; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);">
+                        <i class="mdi mdi-home" style="color: white; font-size: 16px; font-weight: bold;"></i>
+                    </div>
                     <span>خاص</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #2196F3;"></div>
+                    <div class="legend-color" style="background: #2196F3; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);">
+                        <i class="mdi mdi-office-building" style="color: white; font-size: 16px; font-weight: bold;"></i>
+                    </div>
                     <span>حكومة</span>
                 </div>
             </div>
@@ -148,43 +209,143 @@ $countries = $stmt->fetchAll();
             // Initialize marker cluster group
             const markers = L.markerClusterGroup();
             let allMarkers = [];
+            let cities = [];
+            let places = []; // مصفوفة لتخزين جميع الأماكن
 
-            // Load places
+            /**
+             * تحميل المدن المتاحة بناءً على الدولة المختارة
+             * @param {number} countryId - معرف الدولة المختارة
+             */
+            function loadCities(countryId) {
+                // تفريغ قائمة المدن
+                $('#cityFilter').empty().append('<option value="">الكل</option>');
+                
+                if (!countryId) {
+                    return;
+                }
+                
+                // تحميل المدن الفريدة من البيانات المتاحة
+                const uniqueCities = [...new Set(cities.filter(city => city.country_id == countryId).map(city => city.city))];
+                uniqueCities.sort().forEach(city => {
+                    $('#cityFilter').append(`<option value="${city}">${city}</option>`);
+                });
+            }
+            
+            /**
+             * تحميل الأماكن المتاحة بناءً على الدولة والمدينة المختارة
+             * @param {number} countryId - معرف الدولة المختارة
+             * @param {string} cityName - اسم المدينة المختارة
+             */
+            function loadPlaceOptions(countryId, cityName) {
+                // تفريغ قائمة الأماكن
+                $('#placeFilter').empty().append('<option value="">الكل</option>');
+                
+                // تصفية الأماكن حسب الدولة والمدينة
+                let filteredPlaces = places;
+                
+                if (countryId) {
+                    filteredPlaces = filteredPlaces.filter(place => place.country_id == countryId);
+                }
+                
+                if (cityName) {
+                    filteredPlaces = filteredPlaces.filter(place => place.city === cityName);
+                }
+                
+                // تحميل الأماكن الفريدة
+                const uniquePlaces = filteredPlaces.map(place => ({
+                    id: place.id,
+                    name: place.name
+                }));
+                
+                // ترتيب الأماكن أبجدياً
+                uniquePlaces.sort((a, b) => a.name.localeCompare(b.name));
+                
+                // إضافة الأماكن إلى القائمة المنسدلة
+                uniquePlaces.forEach(place => {
+                    $('#placeFilter').append(`<option value="${place.id}">${place.name}</option>`);
+                });
+            }
+
+            /**
+             * إنشاء أيقونة مخصصة للعلامة على الخريطة
+             * @param {string} type - نوع المكان (خاص أو حكومة أو private أو government)
+             * @returns {L.DivIcon} - أيقونة مخصصة للعلامة
+             */
+            function createCustomIcon(type) {
+                // التحقق من نوع المكان بغض النظر عن اللغة
+                const isPrivate = type === 'خاص' || type === 'private';
+                const iconClass = isPrivate ? 'marker-private' : 'marker-government';
+                const iconName = isPrivate ? 'mdi-home' : 'mdi-office-building';
+                
+                return L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div class="custom-marker-icon ${iconClass}"><i class="mdi ${iconName}"></i></div>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
+                    popupAnchor: [0, -18]
+                });
+            }
+
+            /**
+             * تحويل نوع المكان من الإنجليزية إلى العربية
+             * @param {string} type - نوع المكان بالإنجليزية (private أو government)
+             * @returns {string} - نوع المكان بالعربية (خاص أو حكومة)
+             */
+            function translatePlaceType(type) {
+                if (!type) return 'غير محدد';
+                
+                switch(type.toLowerCase()) {
+                    case 'private': return 'خاص';
+                    case 'government': return 'حكومة';
+                    default: return type; // إرجاع القيمة الأصلية إذا كانت بالفعل بالعربية أو غير معروفة
+                }
+            }
+            
+            /**
+             * تحميل الأماكن وعرضها على الخريطة
+             */
             function loadPlaces() {
                 const countryId = $('#countryFilter').val();
+                const cityName = $('#cityFilter').val();
                 const type = $('#typeFilter').val();
+                const placeId = $('#placeFilter').val();
                 
-                // Clear existing markers
+                // تفريغ العلامات الموجودة
                 markers.clearLayers();
                 allMarkers = [];
 
-                // Fetch places
+                // جلب الأماكن من API
                 $.get('api/places.php', function(response) {
+                    // تخزين جميع المدن والأماكن للاستخدام في التصفية
+                    cities = response.data;
+                    places = response.data;
+                    
                     response.data.forEach(place => {
-                        // Apply filters
+                        // تحويل نوع المكان من الإنجليزية إلى العربية
+                        place.type = translatePlaceType(place.type);
+                        
+                        // تطبيق التصفية
                         if ((countryId && place.country_id != countryId) || 
-                            (type && place.type != type)) {
+                            (cityName && place.city != cityName) ||
+                            (type && place.type != type && translatePlaceType(place.type) != type) ||
+                            (placeId && place.id != placeId)) {
                             return;
                         }
 
-                        // Create marker
+                        // إنشاء العلامة بأيقونة مخصصة
                         const marker = L.marker([place.latitude, place.longitude], {
-                            icon: L.divIcon({
-                                className: 'custom-marker',
-                                html: `<div style="background-color: ${place.type === 'خاص' ? '#4CAF50' : '#2196F3'}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
-                                iconSize: [12, 12]
-                            })
+                            icon: createCustomIcon(place.type)
                         });
 
-                        // Add popup
+                        // إضافة نافذة منبثقة للعلامة مع تنسيق محسن
                         marker.bindPopup(`
                             <div class="text-center">
                                 <h6 class="mb-2">${place.name}</h6>
                                 <p class="mb-1">
-                                    <strong>الدولة:</strong> ${place.country_name}<br>
-                                    <strong>المدينة:</strong> ${place.city}<br>
-                                    <strong>النوع:</strong> ${place.type}<br>
-                                    <strong>العدد:</strong> ${place.total}
+                                    <strong>الدولة:</strong> ${place.country_name || 'غير محدد'}<br>
+                                    <strong>المدينة:</strong> ${place.city || 'غير محدد'}<br>
+                                    <strong>النوع:</strong> <span class="fw-bold ${place.type === 'خاص' ? 'text-success' : place.type === 'حكومة' ? 'text-primary' : ''}">${place.type || 'غير محدد'}</span><br>
+                                    <strong>العدد:</strong> ${place.total || '0'}
                                 </p>
                             </div>
                         `);
@@ -195,20 +356,44 @@ $countries = $stmt->fetchAll();
 
                     map.addLayer(markers);
 
-                    // Fit bounds if markers exist
+                    // ضبط حدود الخريطة إذا كانت هناك علامات
                     if (allMarkers.length > 0) {
                         const group = L.featureGroup(allMarkers);
                         map.fitBounds(group.getBounds());
                     }
+                    
+                    // تحميل المدن إذا تم اختيار دولة
+                    if (countryId && !cityName) {
+                        loadCities(countryId);
+                    }
+                    
+                    // تحميل الأماكن إذا تم اختيار دولة أو مدينة
+                    if (countryId || cityName) {
+                        loadPlaceOptions(countryId, cityName);
+                    }
                 });
             }
 
-            // Handle filter changes
-            $('#countryFilter, #typeFilter').on('change', loadPlaces);
+            // معالجة تغييرات التصفية
+            $('#countryFilter').on('change', function() {
+                // إعادة تعيين تصفية المدينة عند تغيير الدولة
+                $('#cityFilter').empty().append('<option value="">الكل</option>');
+                // إعادة تعيين تصفية الأماكن عند تغيير الدولة
+                $('#placeFilter').empty().append('<option value="">الكل</option>');
+                loadPlaces();
+            });
+            
+            $('#cityFilter').on('change', function() {
+                // إعادة تعيين تصفية الأماكن عند تغيير المدينة
+                $('#placeFilter').empty().append('<option value="">الكل</option>');
+                loadPlaces();
+            });
+            
+            $('#typeFilter, #placeFilter').on('change', loadPlaces);
 
-            // Initial load
+            // التحميل الأولي
             loadPlaces();
         });
     </script>
 </body>
-</html> 
+</html>

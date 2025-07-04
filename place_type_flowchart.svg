@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <!-- تعريف الأنماط -->
+  <style>
+    .box { fill: white; stroke: #333; stroke-width: 2; }
+    .decision { fill: #f0f0f0; stroke: #333; stroke-width: 2; }
+    .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .text { font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; }
+    .title { font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; text-anchor: middle; }
+    .subtitle { font-family: Arial, sans-serif; font-size: 14px; font-style: italic; text-anchor: middle; }
+  </style>
+  
+  <!-- تعريف رأس السهم -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- العنوان -->
+  <text x="400" y="30" class="title">مخطط انسيابي لعملية إضافة وعرض نوع المكان</text>
+  <text x="400" y="50" class="subtitle">يوضح تدفق البيانات ومعالجة نوع المكان (خاص/حكومة)</text>
+  
+  <!-- المربعات والأسهم -->
+  <!-- واجهة المستخدم - إضافة مكان -->
+  <rect x="100" y="100" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="200" y="130" class="text">واجهة المستخدم (places.php)</text>
+  <text x="200" y="150" class="text">اختيار نوع المكان من القائمة</text>
+  <text x="200" y="170" class="text">(خاص/حكومة)</text>
+  
+  <!-- تحويل القيم -->
+  <rect x="100" y="230" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="200" y="260" class="text">تحويل القيم في النموذج</text>
+  <text x="200" y="280" class="text">خاص → private</text>
+  <text x="200" y="300" class="text">حكومة → government</text>
+  
+  <!-- إرسال البيانات إلى API -->
+  <rect x="100" y="360" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="200" y="390" class="text">إرسال البيانات إلى API</text>
+  <text x="200" y="410" class="text">type: "private" أو "government"</text>
+  
+  <!-- التحقق من صحة البيانات -->
+  <polygon points="400,360 500,400 400,440 300,400" class="decision" />
+  <text x="400" y="400" class="text">التحقق من صحة البيانات</text>
+  <text x="400" y="420" class="text">type in [private, government]</text>
+  
+  <!-- حفظ البيانات -->
+  <rect x="300" y="490" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="400" y="520" class="text">حفظ البيانات في قاعدة البيانات</text>
+  <text x="400" y="540" class="text">type: "private" أو "government"</text>
+  
+  <!-- عرض البيانات على الخريطة -->
+  <rect x="550" y="360" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="650" y="390" class="text">عرض البيانات على الخريطة</text>
+  <text x="650" y="410" class="text">map.php</text>
+  
+  <!-- تحويل القيم للعرض -->
+  <rect x="550" y="230" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="650" y="260" class="text">تحويل القيم للعرض</text>
+  <text x="650" y="280" class="text">private → خاص</text>
+  <text x="650" y="300" class="text">government → حكومة</text>
+  
+  <!-- عرض النافذة المنبثقة -->
+  <rect x="550" y="100" width="200" height="80" rx="5" ry="5" class="box" />
+  <text x="650" y="130" class="text">عرض النافذة المنبثقة</text>
+  <text x="650" y="150" class="text">النوع: خاص (أخضر)</text>
+  <text x="650" y="170" class="text">النوع: حكومة (أزرق)</text>
+  
+  <!-- الأسهم -->
+  <!-- من واجهة المستخدم إلى تحويل القيم -->
+  <path d="M 200 180 L 200 230" class="arrow" />
+  
+  <!-- من تحويل القيم إلى إرسال البيانات -->
+  <path d="M 200 310 L 200 360" class="arrow" />
+  
+  <!-- من إرسال البيانات إلى التحقق من صحة البيانات -->
+  <path d="M 300 400 L 300 400" class="arrow" />
+  
+  <!-- من التحقق من صحة البيانات إلى حفظ البيانات (صحيح) -->
+  <path d="M 400 440 L 400 490" class="arrow" />
+  
+  <!-- من التحقق من صحة البيانات إلى رسالة خطأ (غير صحيح) -->
+  <path d="M 500 400 L 550 400" class="arrow" />
+  
+  <!-- من حفظ البيانات إلى عرض البيانات -->
+  <path d="M 500 520 L 650 520 L 650 440" class="arrow" />
+  
+  <!-- من عرض البيانات إلى تحويل القيم للعرض -->
+  <path d="M 650 360 L 650 310" class="arrow" />
+  
+  <!-- من تحويل القيم للعرض إلى عرض النافذة المنبثقة -->
+  <path d="M 650 230 L 650 180" class="arrow" />
+</svg>
