@@ -247,6 +247,11 @@ $countries = $stmt->fetchAll();
                             يرجى تحميل ملف Excel (.xlsx أو .xls) يحتوي على بيانات الأماكن.
                             <br>
                             يجب أن يحتوي الملف على الأعمدة التالية: الاسم، الدولة، المدينة، النوع، العدد، خط العرض، خط الطول.
+                            <br>
+                            <a href="api/template.php?type=places" class="btn btn-sm btn-outline-info mt-2">
+                                <i class="mdi mdi-file-download me-1"></i>
+                                تنزيل نموذج فارغ
+                            </a>
                         </div>
                         <div class="mb-3">
                             <label for="excelFile" class="form-label">ملف Excel</label>

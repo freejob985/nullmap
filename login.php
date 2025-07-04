@@ -6,6 +6,14 @@ require_once __DIR__ . '/helpers/validation.php';
 $auth = Auth::getInstance();
 $validation = Validation::getInstance();
 
+// Handle logout
+if (isset($_GET['logout'])) {
+    $auth->logout();
+    // Redirect to login page after logout
+    header('Location: login.php?logout_success=1');
+    exit;
+}
+
 // Redirect if already logged in
 if ($auth->isLoggedIn()) {
     header('Location: index.php');
@@ -153,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Toastify -->
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     
-    <?php if (isset($_GET['logout'])): ?>
+    <?php if (isset($_GET['logout_success'])): ?>
     <script>
         Toastify({
             text: "تم تسجيل الخروج بنجاح",
@@ -165,4 +173,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
     <?php endif; ?>
 </body>
-</html> 
+</html>
