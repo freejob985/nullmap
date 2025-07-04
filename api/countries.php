@@ -36,7 +36,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 exit;
             }
 
-            $stmt = $db->prepare('SELECT * FROM countries WHERE id = ?');
+            $stmt = $db->getConnection()->prepare('SELECT * FROM countries WHERE id = ?');
             $stmt->execute([$id]);
             $country = $stmt->fetch();
 
@@ -51,7 +51,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Get all countries
-        $stmt = $db->query('SELECT * FROM countries ORDER BY id DESC');
+        $stmt = $db->getConnection()->query('SELECT * FROM countries ORDER BY id DESC');
         $countries = $stmt->fetchAll();
         echo json_encode(['data' => $countries]);
         break;
@@ -76,7 +76,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Insert country
-        $stmt = $db->prepare('
+        $stmt = $db->getConnection()->prepare('
             INSERT INTO countries (name, city, latitude, longitude)
             VALUES (?, ?, ?, ?)
         ');
@@ -89,10 +89,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 $data['longitude']
             ]);
 
+            $lastId = $db->getConnection()->lastInsertId();
             echo json_encode([
                 'message' => 'Country created successfully',
                 'data' => [
-                    'id' => $db->lastInsertId(),
+                    'id' => $lastId,
                     'name' => $data['name'],
                     'city' => $data['city'],
                     'latitude' => $data['latitude'],
@@ -142,7 +143,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Update country
-        $stmt = $db->prepare('
+        $stmt = $db->getConnection()->prepare('
             UPDATE countries
             SET name = ?, city = ?, latitude = ?, longitude = ?
             WHERE id = ?
@@ -198,7 +199,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
         // Delete country
-        $stmt = $db->prepare('DELETE FROM countries WHERE id = ?');
+        $stmt = $db->getConnection()->prepare('DELETE FROM countries WHERE id = ?');
 
         try {
             $stmt->execute([$id]);

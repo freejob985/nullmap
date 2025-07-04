@@ -1,29 +1,57 @@
 <?php
 /**
- * Database Helper Functions
+ * Database Helper Class
+ * 
+ * This class provides a singleton pattern for database connections
+ * and common database operations using PDO.
  */
 
 class Database {
-    private static $instance = null;
-    private $connection;
+    /**
+     * @var PDO The database connection
+     */
+    private static $connection = null;
 
+    /**
+     * @var Database The singleton instance
+     */
+    private static $instance = null;
+
+    /**
+     * Private constructor to prevent direct instantiation
+     */
     private function __construct() {
+        $config = require __DIR__ . '/../config/database.php';
+
         try {
-            $config = require_once __DIR__ . '/../config/database.php';
-            $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
-            
-            $this->connection = new PDO(
+            // Build DSN
+            $dsn = sprintf(
+                '%s:host=%s;dbname=%s;charset=%s',
+                $config['driver'],
+                $config['host'],
+                $config['database'],
+                $config['charset']
+            );
+
+            // Create PDO instance
+            self::$connection = new PDO(
                 $dsn,
                 $config['username'],
                 $config['password'],
                 $config['options']
             );
         } catch (PDOException $e) {
-            error_log("Connection failed: " . $e->getMessage());
-            throw new Exception("Database connection failed");
+            // Log error and throw exception
+            error_log('Database Connection Error: ' . $e->getMessage());
+            throw new Exception('خطأ في الاتصال بقاعدة البيانات');
         }
     }
 
+    /**
+     * Get singleton instance
+     * 
+     * @return Database
+     */
     public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new self();
@@ -31,80 +59,117 @@ class Database {
         return self::$instance;
     }
 
+    /**
+     * Get database connection
+     * 
+     * @return PDO
+     */
     public function getConnection() {
-        return $this->connection;
+        return self::$connection;
     }
 
-    public function query($sql, $params = []) {
-        try {
-            $stmt = $this->connection->prepare($sql);
-            $stmt->execute($params);
-            return $stmt;
-        } catch (PDOException $e) {
-            error_log("Query failed: " . $e->getMessage());
-            throw new Exception("Database query failed");
-        }
-    }
-
-    public function insert($table, $data) {
-        $fields = implode(', ', array_keys($data));
-        $placeholders = implode(', ', array_fill(0, count($data), '?'));
-        $sql = "INSERT INTO {$table} ({$fields}) VALUES ({$placeholders})";
-        
-        try {
-            $stmt = $this->connection->prepare($sql);
-            $stmt->execute(array_values($data));
-            return $this->connection->lastInsertId();
-        } catch (PDOException $e) {
-            error_log("Insert failed: " . $e->getMessage());
-            throw new Exception("Database insert failed");
-        }
-    }
-
-    public function update($table, $data, $where, $whereParams = []) {
-        $fields = implode(' = ?, ', array_keys($data)) . ' = ?';
-        $sql = "UPDATE {$table} SET {$fields} WHERE {$where}";
-        
-        try {
-            $stmt = $this->connection->prepare($sql);
-            $stmt->execute(array_merge(array_values($data), $whereParams));
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            error_log("Update failed: " . $e->getMessage());
-            throw new Exception("Database update failed");
-        }
-    }
-
-    public function delete($table, $where, $params = []) {
-        $sql = "DELETE FROM {$table} WHERE {$where}";
-        
-        try {
-            $stmt = $this->connection->prepare($sql);
-            $stmt->execute($params);
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            error_log("Delete failed: " . $e->getMessage());
-            throw new Exception("Database delete failed");
-        }
-    }
-
+    /**
+     * Execute a query and return all results
+     * 
+     * @param string $sql SQL query
+     * @param array $params Query parameters
+     * @return array Query results
+     */
     public function fetchAll($sql, $params = []) {
         try {
-            $stmt = $this->query($sql, $params);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = self::$connection->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
         } catch (PDOException $e) {
-            error_log("FetchAll failed: " . $e->getMessage());
-            throw new Exception("Database fetch failed");
+            error_log('Database Query Error: ' . $e->getMessage());
+            throw new Exception('خطأ في تنفيذ الاستعلام');
         }
     }
 
+    /**
+     * Execute a query and return one result
+     * 
+     * @param string $sql SQL query
+     * @param array $params Query parameters
+     * @return array|false Query result or false if not found
+     */
     public function fetchOne($sql, $params = []) {
         try {
-            $stmt = $this->query($sql, $params);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = self::$connection->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetch();
         } catch (PDOException $e) {
-            error_log("FetchOne failed: " . $e->getMessage());
-            throw new Exception("Database fetch failed");
+            error_log('Database Query Error: ' . $e->getMessage());
+            throw new Exception('خطأ في تنفيذ الاستعلام');
         }
+    }
+
+    /**
+     * Execute a query and return the last insert ID
+     * 
+     * @param string $sql SQL query
+     * @param array $params Query parameters
+     * @return int Last insert ID
+     */
+    public function insert($sql, $params = []) {
+        try {
+            $stmt = self::$connection->prepare($sql);
+            $stmt->execute($params);
+            return self::$connection->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('Database Insert Error: ' . $e->getMessage());
+            throw new Exception('خطأ في إضافة البيانات');
+        }
+    }
+
+    /**
+     * Execute a query and return affected rows
+     * 
+     * @param string $sql SQL query
+     * @param array $params Query parameters
+     * @return int Number of affected rows
+     */
+    public function execute($sql, $params = []) {
+        try {
+            $stmt = self::$connection->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->rowCount();
+        } catch (PDOException $e) {
+            error_log('Database Execute Error: ' . $e->getMessage());
+            throw new Exception('خطأ في تنفيذ العملية');
+        }
+    }
+
+    /**
+     * Begin a transaction
+     */
+    public function beginTransaction() {
+        self::$connection->beginTransaction();
+    }
+
+    /**
+     * Commit a transaction
+     */
+    public function commit() {
+        self::$connection->commit();
+    }
+
+    /**
+     * Rollback a transaction
+     */
+    public function rollback() {
+        self::$connection->rollBack();
+    }
+
+    /**
+     * Prevent cloning of the instance
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserializing of the instance
+     */
+    public function __wakeup() {
+
     }
 } 

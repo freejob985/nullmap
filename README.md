@@ -1,74 +1,147 @@
-# NullMap - Geographical Location Management System
+# نظام إدارة المواقع الجغرافية (NullMap)
 
-A comprehensive web application for managing geographical locations, places, and users with an interactive map interface.
+نظام ويب متكامل لإدارة المواقع الجغرافية، يتيح للمستخدمين إضافة وتعديل وحذف الدول والأماكن، مع عرضها على خريطة تفاعلية.
 
-## Features
+## المميزات
 
-- User authentication and authorization
-- Interactive map with custom markers for different location types
-- CRUD operations for countries, places, and users
-- RTL Arabic interface
-- Role-based access control
-- Responsive design
-- Form validation and sanitization
-- Error logging
-- API endpoints
+- واجهة مستخدم عربية بالكامل مع دعم RTL
+- خريطة تفاعلية باستخدام Leaflet.js
+- نظام إدارة مستخدمين متكامل مع صلاحيات
+- جداول تفاعلية مع إمكانية البحث والترتيب
+- تصفية المواقع حسب الدولة والنوع
+- تجميع المواقع المتقاربة على الخريطة
+- تصميم متجاوب مع جميع الأجهزة
 
-## Technologies Used
+## المتطلبات
 
-- PHP for backend
-- MySQL for database
-- Bootstrap 5 & Material Design for UI
-- Leaflet.js for map integration
-- DataTables for data management
-- SweetAlert2 for confirmations
-- Toastify for notifications
-- Cairo & Tajawal fonts for Arabic interface
+- PHP 7.4 أو أحدث
+- MySQL 5.7 أو أحدث
+- خادم ويب (Apache/Nginx)
+- متصفح حديث يدعم JavaScript
 
-## Installation
+## التثبيت
 
-1. Clone the repository
-2. Import the database schema from `schema.sql`
-3. Configure database settings in `config/database.php`
-4. Ensure PHP and MySQL are installed and running
-5. Access the application through your web server
+1. قم بنسخ الملفات إلى مجلد الخادم
+2. قم بإنشاء قاعدة بيانات جديدة
+3. قم بتعديل ملف `config/database.php` بمعلومات قاعدة البيانات
+4. قم بتنفيذ ملف `database/schema.sql` لإنشاء الجداول
+5. قم بتسجيل الدخول باستخدام:
+   - البريد: admin@nullmap.local
+   - كلمة المرور: admin123
 
-## Project Structure
+## هيكل المشروع
 
 ```
 nullmap/
-├── config/
-│   └── database.php
-├── helpers/
-│   ├── database.php
-│   ├── auth.php
-│   └── validation.php
-├── assets/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       └── app.js
-├── api/
-│   ├── countries.php
-│   └── places.php
-├── modals/
-│   ├── countries.php
-│   ├── places.php
-│   └── users.php
-├── schema.sql
-├── index.php
-└── login.php
+├── api/                    # نقاط نهاية API
+│   ├── countries.php      # إدارة الدول
+│   ├── places.php         # إدارة الأماكن
+│   └── users.php          # إدارة المستخدمين
+├── assets/                # الملفات الثابتة
+│   ├── css/              # ملفات CSS
+│   └── js/               # ملفات JavaScript
+├── config/                # ملفات الإعداد
+│   └── database.php      # إعدادات قاعدة البيانات
+├── database/             # ملفات قاعدة البيانات
+│   └── schema.sql        # هيكل قاعدة البيانات
+├── helpers/              # الدوال المساعدة
+│   ├── auth.php          # المصادقة والتفويض
+│   ├── database.php      # اتصال قاعدة البيانات
+│   └── validation.php    # التحقق من الصحة
+├── includes/             # الملفات المشتركة
+│   └── navbar.php        # شريط التنقل
+├── index.php             # الصفحة الرئيسية
+├── login.php             # صفحة تسجيل الدخول
+├── map.php               # صفحة الخريطة
+├── countries.php         # صفحة الدول
+├── places.php            # صفحة الأماكن
+└── users.php             # صفحة المستخدمين
 ```
 
-## Security
+## الوظائف الرئيسية
 
-- Input validation and sanitization
-- Prepared statements for database queries
-- Password hashing
-- CSRF protection
-- XSS prevention
-- Role-based access control
+### المصادقة (`helpers/auth.php`)
+- `login($email, $password)`: تسجيل الدخول
+- `logout()`: تسجيل الخروج
+- `isLoggedIn()`: التحقق من تسجيل الدخول
+- `requireLogin()`: طلب تسجيل الدخول
+- `isAdmin()`: التحقق من صلاحيات المدير
+- `requireAdmin()`: طلب صلاحيات المدير
 
-## License
+### قاعدة البيانات (`helpers/database.php`)
+- `getInstance()`: الحصول على نسخة وحيدة
+- `getConnection()`: الحصول على اتصال PDO
+- `query($sql, $params)`: تنفيذ استعلام
+- `fetchOne($sql, $params)`: جلب صف واحد
+- `fetchAll($sql, $params)`: جلب جميع الصفوف
 
-MIT License 
+### التحقق من الصحة (`helpers/validation.php`)
+- `validate($data, $rules)`: التحقق من البيانات
+- `sanitize($data)`: تنظيف البيانات
+- `getErrors()`: الحصول على الأخطاء
+
+## API Endpoints
+
+### الدول (`api/countries.php`)
+- `GET /api/countries.php`: قائمة الدول
+- `GET /api/countries.php?id=X`: تفاصيل دولة
+- `POST /api/countries.php`: إضافة دولة
+- `PUT /api/countries.php?id=X`: تعديل دولة
+- `DELETE /api/countries.php?id=X`: حذف دولة
+
+### الأماكن (`api/places.php`)
+- `GET /api/places.php`: قائمة الأماكن
+- `GET /api/places.php?id=X`: تفاصيل مكان
+- `POST /api/places.php`: إضافة مكان
+- `PUT /api/places.php?id=X`: تعديل مكان
+- `DELETE /api/places.php?id=X`: حذف مكان
+
+### المستخدمون (`api/users.php`)
+- `GET /api/users.php`: قائمة المستخدمين
+- `GET /api/users.php?id=X`: تفاصيل مستخدم
+- `POST /api/users.php`: إضافة مستخدم
+- `PUT /api/users.php?id=X`: تعديل مستخدم
+- `DELETE /api/users.php?id=X`: حذف مستخدم
+
+## التغييرات الأخيرة
+
+1. إعادة هيكلة نظام تسجيل الدخول:
+   - تحسين التحقق من كلمة المرور
+   - إضافة تسجيل الأخطاء
+   - تحسين رسائل الخطأ
+
+2. تحسين واجهة المستخدم:
+   - إضافة شريط تنقل موحد
+   - تحسين تصميم الجداول
+   - إضافة تصفية للمواقع
+
+3. تحسين الخريطة:
+   - إضافة تجميع المواقع
+   - تحسين الفلاتر
+   - إضافة وسيلة إيضاح
+
+4. إصلاح الأخطاء:
+   - مشكلة في إضافة الدول
+   - مشكلة في API المستخدمين
+   - تحسين التحقق من الصحة
+
+## التحسينات المستقبلية
+
+1. إضافة نظام تقارير وإحصائيات
+2. إضافة دعم للصور والملفات
+3. تحسين أداء الخريطة مع البيانات الكبيرة
+4. إضافة نظام تنبيهات
+5. إضافة نظام نسخ احتياطي
+
+## المساهمة
+
+نرحب بمساهماتكم! يرجى اتباع الخطوات التالية:
+1. قم بعمل fork للمشروع
+2. قم بإنشاء فرع جديد (`git checkout -b feature/amazing-feature`)
+3. قم بعمل commit للتغييرات (`git commit -m 'إضافة ميزة رائعة'`)
+4. قم بدفع الفرع (`git push origin feature/amazing-feature`)
+5. قم بفتح طلب دمج
+
+## الترخيص
+
+هذا المشروع مرخص تحت رخصة MIT. راجع ملف `LICENSE` للمزيد من المعلومات. 
