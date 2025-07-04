@@ -21,11 +21,25 @@ if (!$auth->hasPermission('manage_permissions') && !$auth->isAdmin()) {
     exit;
 }
 
+// Check if user_id is provided in URL
+$selectedUserId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
+
 // Get all users
 $users = $db->fetchAll('SELECT id, name, email, role, is_active FROM users ORDER BY name');
 
 // Get all permissions
 $permissions = $auth->getAllPermissions();
+
+// Get selected user details if user_id is provided
+$selectedUser = null;
+if ($selectedUserId) {
+    foreach ($users as $user) {
+        if ($user['id'] == $selectedUserId) {
+            $selectedUser = $user;
+            break;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -55,6 +69,10 @@ $permissions = $auth->getAllPermissions();
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">إدارة صلاحيات المستخدمين</h5>
+                <a href="users.php" class="btn btn-secondary">
+                    <i class="mdi mdi-arrow-left me-1"></i>
+                    العودة إلى المستخدمين
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -151,11 +169,19 @@ $permissions = $auth->getAllPermissions();
     <script>
         $(document).ready(function() {
             // Initialize DataTable
-            $('#usersTable').DataTable({
+            const table = $('#usersTable').DataTable({
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/ar.json'
                 }
             });
+            
+            // Auto-open permissions modal if user_id is provided in URL
+            <?php if ($selectedUser): ?>
+            // Trigger click on the edit permissions button for the selected user
+            setTimeout(function() {
+                $('.edit-permissions-btn[data-id="<?php echo $selectedUser['id']; ?>"]').click();
+            }, 500);
+            <?php endif; ?>
 
             // Handle edit permissions button click
             $('.edit-permissions-btn').on('click', function() {

@@ -36,6 +36,27 @@ try {
     // Get recent places
     $stmt = $db->getConnection()->query('SELECT p.*, c.name as country_name FROM places p JOIN countries c ON p.country_id = c.id ORDER BY p.created_at DESC LIMIT 5');
     $recentPlaces = $stmt->fetchAll();
+    
+    // Get places by type for pie chart
+    $stmt = $db->getConnection()->query('SELECT type, COUNT(*) as count FROM places GROUP BY type');
+    $placesByType = $stmt->fetchAll();
+    
+    // Get top 5 countries by places count for bar chart
+    $stmt = $db->getConnection()->query('SELECT c.name, COUNT(p.id) as count 
+                                        FROM countries c 
+                                        JOIN places p ON c.id = p.country_id 
+                                        GROUP BY c.id 
+                                        ORDER BY count DESC 
+                                        LIMIT 5');
+    $topCountriesByPlaces = $stmt->fetchAll();
+    
+    // Get places added per month for line chart (last 6 months)
+    $stmt = $db->getConnection()->query('SELECT DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as count 
+                                        FROM places 
+                                        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) 
+                                        GROUP BY month 
+                                        ORDER BY month ASC');
+    $placesPerMonth = $stmt->fetchAll();
 } catch (PDOException $e) {
     error_log("Dashboard statistics error: " . $e->getMessage());
     $error = 'حدث خطأ في جلب الإحصائيات';
@@ -54,8 +75,17 @@ try {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar -->
@@ -102,6 +132,41 @@ try {
                             <i class="mdi mdi-arrow-left-bold"></i>
                             عرض المستخدمين
                         </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">الرسوم البيانية</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Places by Type Pie Chart -->
+                            <div class="col-md-4">
+                                <div class="chart-container">
+                                    <canvas id="placesByTypeChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Top Countries Bar Chart -->
+                            <div class="col-md-4">
+                                <div class="chart-container">
+                                    <canvas id="topCountriesChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Places per Month Line Chart -->
+                            <div class="col-md-4">
+                                <div class="chart-container">
+                                    <canvas id="placesPerMonthChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -186,5 +251,169 @@ try {
 
     <!-- Bootstrap Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set Chart.js default options for RTL support
+            Chart.defaults.font.family = 'Tajawal, sans-serif';
+            Chart.defaults.color = '#666';
+            
+            // Places by Type Pie Chart
+            const placesByTypeCtx = document.getElementById('placesByTypeChart').getContext('2d');
+            const placesByTypeChart = new Chart(placesByTypeCtx, {
+                type: 'pie',
+                data: {
+                    labels: [
+                        <?php 
+                        $typeLabels = [];
+                        foreach ($placesByType as $type) {
+                            // Translate type values
+                            $label = $type['type'] === 'private' ? 'خاص' : 'حكومي';
+                            $typeLabels[] = "'$label'";
+                        }
+                        echo implode(',', $typeLabels);
+                        ?>
+                    ],
+                    datasets: [{
+                        data: [
+                            <?php 
+                            $typeCounts = [];
+                            foreach ($placesByType as $type) {
+                                $typeCounts[] = $type['count'];
+                            }
+                            echo implode(',', $typeCounts);
+                            ?>
+                        ],
+                        backgroundColor: [
+                            '#4e73df',
+                            '#1cc88a',
+                            '#36b9cc',
+                            '#f6c23e',
+                            '#e74a3b'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'توزيع الأماكن حسب النوع'
+                        }
+                    }
+                }
+            });
+            
+            // Top Countries Bar Chart
+            const topCountriesCtx = document.getElementById('topCountriesChart').getContext('2d');
+            const topCountriesChart = new Chart(topCountriesCtx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        <?php 
+                        $countryNames = [];
+                        foreach ($topCountriesByPlaces as $country) {
+                            $countryNames[] = "'" . htmlspecialchars($country['name']) . "'";
+                        }
+                        echo implode(',', $countryNames);
+                        ?>
+                    ],
+                    datasets: [{
+                        label: 'عدد الأماكن',
+                        data: [
+                            <?php 
+                            $countryCounts = [];
+                            foreach ($topCountriesByPlaces as $country) {
+                                $countryCounts[] = $country['count'];
+                            }
+                            echo implode(',', $countryCounts);
+                            ?>
+                        ],
+                        backgroundColor: '#36b9cc',
+                        borderColor: '#2c9faf',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'أعلى الدول من حيث عدد الأماكن'
+                        }
+                    }
+                }
+            });
+            
+            // Places per Month Line Chart
+            const placesPerMonthCtx = document.getElementById('placesPerMonthChart').getContext('2d');
+            const placesPerMonthChart = new Chart(placesPerMonthCtx, {
+                type: 'line',
+                data: {
+                    labels: [
+                        <?php 
+                        $months = [];
+                        foreach ($placesPerMonth as $month) {
+                            // Convert YYYY-MM to Arabic month name
+                            $date = new DateTime($month['month'] . '-01');
+                            $monthName = $date->format('F Y');
+                            // You can add a function to translate month names to Arabic if needed
+                            $months[] = "'$monthName'";
+                        }
+                        echo implode(',', $months);
+                        ?>
+                    ],
+                    datasets: [{
+                        label: 'الأماكن المضافة',
+                        data: [
+                            <?php 
+                            $monthlyCounts = [];
+                            foreach ($placesPerMonth as $month) {
+                                $monthlyCounts[] = $month['count'];
+                            }
+                            echo implode(',', $monthlyCounts);
+                            ?>
+                        ],
+                        fill: false,
+                        borderColor: '#4e73df',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'الأماكن المضافة شهرياً'
+                        }
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>

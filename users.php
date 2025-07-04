@@ -4,6 +4,11 @@
  * 
  * Displays a list of all users in a DataTable with CRUD operations.
  * Only accessible by administrators.
+ * 
+ * Features:
+ * - Add, edit, and delete users
+ * - Manage user permissions via the permissions button
+ * - Redirects to user_permissions.php for detailed permission management
  */
 
 require_once __DIR__ . '/helpers/database.php';
@@ -219,6 +224,10 @@ $auth->requireAdmin();
                                 <button class="btn btn-sm btn-danger delete-btn" data-id="${data.id}">
                                     <i class="mdi mdi-delete"></i>
                                 </button>
+                                <button class="btn btn-sm btn-info permissions-btn" data-id="${data.id}" data-name="${data.name}" title="إدارة صلاحيات المستخدم">
+                                    <i class="mdi mdi-key-variant me-1"></i>
+                                    الصلاحيات
+                                </button>
                             `;
                         }
                     }
@@ -352,7 +361,16 @@ $auth->requireAdmin();
             $('#editUserModal').on('hidden.bs.modal', function() {
                 $('#editUserForm')[0].reset();
             });
+            
+            // Handle permissions button click
+            $('#usersTable').on('click', '.permissions-btn', function() {
+                const userId = $(this).data('id');
+                const userName = $(this).data('name');
+                
+                // Redirect to user_permissions.php with user ID in query string
+                window.location.href = 'user_permissions.php?user_id=' + userId;
+            });
         });
     </script>
 </body>
-</html> 
+</html>

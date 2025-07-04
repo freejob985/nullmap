@@ -54,21 +54,34 @@ $countries = $stmt->fetchAll();
 
     <div class="container-fluid py-4">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">الأماكن</h5>
-                <div>
-                    <?php if ($auth->hasPermission('export_places') || $auth->isAdmin()): ?>
-                    <a href="api/export.php?type=places" class="btn btn-success me-2">
-                        <i class="mdi mdi-file-excel me-1"></i>
-                        تصدير إلى Excel
-                    </a>
-                    <?php endif; ?>
-                    <?php if ($auth->hasPermission('add_places') || $auth->isAdmin()): ?>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlaceModal">
-                        <i class="mdi mdi-plus me-1"></i>
-                        إضافة مكان
-                    </button>
-                    <?php endif; ?>
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0">الأماكن</h5>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-end gap-2">
+                            <?php if ($auth->hasPermission('import_places') || $auth->isAdmin()): ?>
+                            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importPlaceModal">
+                                <i class="mdi mdi-file-import me-1"></i>
+                                استيراد من Excel
+                            </button>
+                            <?php endif; ?>
+                            <?php if ($auth->hasPermission('export_places') || $auth->isAdmin()): ?>
+                            <a href="api/export.php?type=places" class="btn btn-success">
+                                <i class="mdi mdi-file-excel me-1"></i>
+                                تصدير إلى Excel
+                            </a>
+                            <?php endif; ?>
+                            <?php if ($auth->hasPermission('add_places') || $auth->isAdmin()): ?>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlaceModal">
+                                <i class="mdi mdi-plus me-1"></i>
+                                إضافة مكان
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -211,6 +224,41 @@ $countries = $stmt->fetchAll();
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                         <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Import Place Modal -->
+    <?php if ($auth->hasPermission('import_places') || $auth->isAdmin()): ?>
+    <div class="modal fade" id="importPlaceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">استيراد الأماكن من ملف Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="importPlaceForm" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="mdi mdi-information-outline me-2"></i>
+                            يرجى تحميل ملف Excel (.xlsx أو .xls) يحتوي على بيانات الأماكن.
+                            <br>
+                            يجب أن يحتوي الملف على الأعمدة التالية: الاسم، الدولة، المدينة، النوع، العدد، خط العرض، خط الطول.
+                        </div>
+                        <div class="mb-3">
+                            <label for="excelFile" class="form-label">ملف Excel</label>
+                            <input type="file" class="form-control" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="mdi mdi-upload me-1"></i>
+                            رفع الملف
+                        </button>
                     </div>
                 </form>
             </div>
@@ -489,6 +537,64 @@ $countries = $stmt->fetchAll();
                                     icon: 'error'
                                 });
                             }
+                        });
+                    }
+                });
+            });
+            
+            // Import places from Excel file
+            $('#importPlaceForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                // Create FormData object
+                const formData = new FormData(this);
+                
+                // Show loading state
+                Swal.fire({
+                    title: 'جاري رفع الملف...',
+                    text: 'يرجى الانتظار',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send AJAX request
+                $.ajax({
+                    url: 'api/import.php?type=places',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // Close the modal
+                        $('#importPlaceModal').modal('hide');
+                        
+                        // Reset the form
+                        $('#importPlaceForm')[0].reset();
+                        
+                        // Show success message
+                        Swal.fire({
+                            title: 'تم الاستيراد!',
+                            text: 'تم استيراد الأماكن بنجاح. تم إضافة ' + response.imported + ' مكان.',
+                            icon: 'success'
+                        });
+                        
+                        // Reload the table
+                        table.ajax.reload();
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'حدث خطأ أثناء استيراد الأماكن.';
+                        
+                        // Try to get more specific error message
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage = xhr.responseJSON.error;
+                        }
+                        
+                        Swal.fire({
+                            title: 'خطأ!',
+                            text: errorMessage,
+                            icon: 'error'
                         });
                     }
                 });
